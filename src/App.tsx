@@ -8,6 +8,8 @@ import Layout from "@/components/Layout"
 
 import { Toaster } from "@/components/ui/sonner"
 
+import Settings from "@/pages/Settings"
+
 const LayoutWrapper = () => (
   <Layout>
     <Outlet />
@@ -24,6 +26,7 @@ function App() {
           <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
           <Route path="/input-data/ktp" element={<InputKTP />} />
           <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
       <Toaster position="top-center" />

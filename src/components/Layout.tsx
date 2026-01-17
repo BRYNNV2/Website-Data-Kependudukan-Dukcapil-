@@ -2,8 +2,9 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
+import { supabase } from "@/lib/supabaseClient"
 
 interface LayoutProps {
     children: React.ReactNode
@@ -12,10 +13,37 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [inputDataOpen, setInputDataOpen] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(false)
     const location = useLocation()
     const navigate = useNavigate()
 
     const isActive = (path: string) => location.pathname === path
+    const [userName, setUserName] = useState("Admin Petugas")
+    const [userInitial, setUserInitial] = useState("A")
+
+    useEffect(() => {
+        getProfile()
+
+        // Listen for auth changes (like profile updates)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+                const name = session.user.user_metadata?.full_name || "Admin Petugas"
+                setUserName(name)
+                setUserInitial(name.charAt(0).toUpperCase())
+            }
+        })
+
+        return () => subscription.unsubscribe()
+    }, [])
+
+    const getProfile = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+            const name = user.user_metadata?.full_name || "Admin Petugas"
+            setUserName(name)
+            setUserInitial(name.charAt(0).toUpperCase())
+        }
+    }
     const isInputDataActive = () => location.pathname.startsWith("/input-data")
 
     // Auto-expand Input Data menu if we're on any input-data page
@@ -31,15 +59,16 @@ export default function Layout({ children }: LayoutProps) {
     }
 
     const NavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => (
-        <Link to={to}>
+        <Link to={to} title={isCollapsed ? label : ""}>
             <div className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md transition-all",
+                isCollapsed && "justify-center px-2",
                 isActive(to)
                     ? "bg-primary text-primary-foreground font-medium shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}>
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {!isCollapsed && <span>{label}</span>}
             </div>
         </Link>
     )
@@ -69,52 +98,76 @@ export default function Layout({ children }: LayoutProps) {
             )}
 
             {/* Sidebar */}
+            {/* Sidebar */}
             <aside className={cn(
-                "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r transition-transform duration-200 transform lg:transform-none flex flex-col",
-                sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-white border-r transition-all duration-300 transform lg:transform-none flex flex-col",
+                sidebarOpen ? "translate-x-0" : "-translate-x-full",
+                isCollapsed ? "w-20" : "w-64"
             )}>
                 {/* Sidebar Header */}
-                <div className="h-16 flex items-center px-6 border-b">
-                    <img src={logoDinas} alt="Logo" className="h-8 w-8 mr-2 object-contain" />
-                    <span className="font-bold text-lg text-primary truncate">SI-PENDUDUK</span>
+                <div className={cn("h-16 flex items-center border-b relative", isCollapsed ? "justify-center px-0" : "px-6")}>
+                    <img src={logoDinas} alt="Logo" className={cn("h-8 w-8 object-contain transition-all", !isCollapsed && "mr-2")} />
+
+                    <span className={cn(
+                        "font-bold text-lg text-primary truncate transition-all duration-300",
+                        isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100"
+                    )}>
+                        SI-PENDUDUK
+                    </span>
+
                     <button
                         className="ml-auto lg:hidden text-muted-foreground hover:text-primary"
                         onClick={() => setSidebarOpen(false)}
                     >
                         <X className="h-5 w-5" />
                     </button>
+
+                    {/* Desktop Toggle Button */}
+                    <button
+                        className="absolute -right-3 top-5 bg-white border shadow-md rounded-full p-1.5 text-muted-foreground hover:text-primary hidden lg:flex items-center justify-center z-50"
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isCollapsed ? <ChevronsRight className="h-3 w-3" /> : <ChevronsLeft className="h-3 w-3" />}
+                    </button>
                 </div>
 
                 {/* Sidebar Nav */}
-                <div className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-2">MENU UTAMA</p>
+                {/* Sidebar Nav */}
+                <div className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
+                    {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-2 transition-all">MENU UTAMA</p>}
                     <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
 
                     {/* Input Data - Expandable Menu */}
                     <div>
                         <button
-                            onClick={() => setInputDataOpen(!inputDataOpen)}
+                            onClick={() => {
+                                if (isCollapsed) setIsCollapsed(false);
+                                setInputDataOpen(!inputDataOpen)
+                            }}
+                            title={isCollapsed ? "Input Data" : ""}
                             className={cn(
                                 "w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all",
+                                isCollapsed && "justify-center px-2",
                                 isInputDataActive()
                                     ? "bg-primary/10 text-primary font-medium"
                                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                         >
                             <div className="flex items-center gap-3">
-                                <FileText className="h-4 w-4" />
-                                <span>Input Data</span>
+                                <FileText className="h-4 w-4 flex-shrink-0" />
+                                {!isCollapsed && <span>Input Data</span>}
                             </div>
-                            <ChevronDown className={cn(
+                            {!isCollapsed && <ChevronDown className={cn(
                                 "h-4 w-4 transition-transform duration-200",
                                 inputDataOpen ? "rotate-180" : ""
-                            )} />
+                            )} />}
                         </button>
 
                         {/* Sub-menu */}
                         <div className={cn(
                             "overflow-hidden transition-all duration-200",
-                            inputDataOpen ? "max-h-48 mt-1" : "max-h-0"
+                            inputDataOpen && !isCollapsed ? "max-h-48 mt-1" : "max-h-0"
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/input-data/kartu-keluarga" icon={Users} label="Kartu Keluarga" />
@@ -123,13 +176,21 @@ export default function Layout({ children }: LayoutProps) {
                             </div>
                         </div>
                     </div>
+
+                    {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
+                    <NavItem to="/settings" icon={Settings} label="Pengaturan" />
                 </div>
 
                 {/* Sidebar Footer */}
-                <div className="p-4 border-t bg-gray-50">
-                    <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleLogout}>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Keluar
+                <div className="p-4 border-t bg-gray-50 flex justify-center">
+                    <Button
+                        variant="ghost"
+                        className={cn("w-full text-red-600 hover:text-red-700 hover:bg-red-50", isCollapsed ? "justify-center px-0" : "justify-start")}
+                        onClick={handleLogout}
+                        title={isCollapsed ? "Keluar" : ""}
+                    >
+                        <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                        {!isCollapsed && "Keluar"}
                     </Button>
                 </div>
             </aside>
@@ -147,21 +208,20 @@ export default function Layout({ children }: LayoutProps) {
                                 location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
                                     location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
                                         location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
-                                            "Admin Panel"}
+                                            location.pathname === "/settings" ? "Pengaturan Akun" :
+                                                "Admin Panel"}
                         </h1>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            A
+                            {userInitial}
                         </div>
-                        <span className="text-sm font-medium mr-2 hidden sm:block">Admin Petugas</span>
+                        <span className="text-sm font-medium mr-2 hidden sm:block">{userName}</span>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <div
-                    className="flex-1 p-4 lg:p-8 overflow-y-auto"
-                >
+                <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
                     {children}
                 </div>
             </main>
