@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, FileSpreadsheet, Upload } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, FileSpreadsheet, Upload, AlertTriangle } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import * as XLSX from "xlsx"
+import { logActivity } from "@/lib/logger"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
     Dialog,
     DialogContent,
@@ -141,6 +143,7 @@ export function KKForm() {
                 }).eq("id", editId)
 
                 if (error) throw error
+                await logActivity("UPDATE DATA KK", `Memperbarui KK No. ${formData.no_kk} (${formData.kepala_keluarga})`)
                 toast.success("Data Kartu Keluarga berhasil diperbarui")
             } else {
                 // Insert new
@@ -156,6 +159,7 @@ export function KKForm() {
                 })
 
                 if (error) throw error
+                await logActivity("TAMBAH DATA KK", `Menambahkan KK No. ${formData.no_kk} (${formData.kepala_keluarga})`)
                 toast.success("Data Kartu Keluarga berhasil disimpan")
             }
 
@@ -209,8 +213,13 @@ export function KKForm() {
     const confirmDelete = async () => {
         if (!deleteId) return
 
+        const itemToDelete = dataList.find(d => d.id === deleteId)
+
         const { error } = await supabase.from("kartu_keluarga").delete().eq("id", deleteId)
         if (!error) {
+            if (itemToDelete) {
+                await logActivity("HAPUS DATA KK", `Menghapus KK No. ${itemToDelete.no_kk} (${itemToDelete.kepala_keluarga})`)
+            }
             toast.success("Data berhasil dihapus")
             fetchData()
         } else {
@@ -367,6 +376,17 @@ export function KKForm() {
                             Data akan dihapus secara permanen dan tidak dapat dikembalikan.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+
+                    <div className="my-2">
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Peringatan!</AlertTitle>
+                            <AlertDescription>
+                                Tindakan ini bersifat permanen. Pastikan Anda menghapus data yang benar.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+
                     <AlertDialogFooter>
                         <AlertDialogCancel>Batal</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

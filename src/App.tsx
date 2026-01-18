@@ -4,7 +4,9 @@ import Dashboard from "@/pages/Dashboard"
 import InputKK from "@/pages/InputKK"
 import InputKTP from "@/pages/InputKTP"
 import InputAkta from "@/pages/InputAkta"
+import InputAktaPerkawinan from "@/pages/InputAktaPerkawinan"
 import Layout from "@/components/Layout"
+import ActivityLog from "@/pages/ActivityLog"
 
 import { Toaster } from "@/components/ui/sonner"
 
@@ -26,6 +28,8 @@ function App() {
           <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
           <Route path="/input-data/ktp" element={<InputKTP />} />
           <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
+          <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
+          <Route path="/activity-log" element={<ActivityLog />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

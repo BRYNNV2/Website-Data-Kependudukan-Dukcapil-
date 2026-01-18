@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { Plus, Trash2, X, FileDown, Search, Eye } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { logActivity } from "@/lib/logger"
 import {
     Dialog,
     DialogContent,
@@ -133,7 +134,8 @@ export function AktaForm() {
                 }).eq("id", editId)
 
                 if (error) throw error
-                toast.success("Data Akta berhasil diperbarui")
+                await logActivity("UPDATE DATA AKTA", `Memperbarui Akta No: ${formData.no_akta} (${formData.nama_anak})`)
+                toast.success("Data Akta Kelahiran berhasil diperbarui")
             } else {
                 // Insert
                 const { error } = await supabase.from("akta_kelahiran").insert({
@@ -146,6 +148,7 @@ export function AktaForm() {
                 })
 
                 if (error) throw error
+                await logActivity("TAMBAH DATA AKTA", `Menambahkan Akta No: ${formData.no_akta} (${formData.nama_anak})`)
                 toast.success("Data Akta Kelahiran berhasil disimpan")
             }
 
@@ -186,8 +189,13 @@ export function AktaForm() {
     const confirmDelete = async () => {
         if (!deleteId) return
 
+        const item = dataList.find(d => d.id === deleteId)
+
         const { error } = await supabase.from("akta_kelahiran").delete().eq("id", deleteId)
         if (!error) {
+            if (item) {
+                await logActivity("HAPUS DATA AKTA", `Menghapus Akta No: ${item.no_akta} (${item.nama_anak})`)
+            }
             toast.success("Data berhasil dihapus")
             fetchData()
         } else {

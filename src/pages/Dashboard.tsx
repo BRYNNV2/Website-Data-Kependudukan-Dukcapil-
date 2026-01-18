@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, CheckCircle, Activity } from "lucide-react"
+import { Users, FileText, CheckCircle, MapPin } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { id } from "date-fns/locale"
@@ -26,7 +26,7 @@ export default function Dashboard() {
         totalKK: 0,
         totalAkta: 0
     })
-    const [recentActivity, setRecentActivity] = useState<any[]>([])
+    const [topRegions, setTopRegions] = useState<{ name: string, count: number }[]>([])
     const [inputHistory, setInputHistory] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -72,15 +72,24 @@ export default function Dashboard() {
             setInputHistory(historyData)
 
 
-            // Fetch Recent Activity
-            const { data: recentPenduduk } = await supabase
-                .from("penduduk")
-                .select("*")
-                .order("created_at", { ascending: false })
-                .limit(5)
+            // Fetch Top Regions
+            const { data: kkData } = await supabase.from('kartu_keluarga').select('rt, rw')
+            if (kkData) {
+                const regionCounts: Record<string, number> = {}
+                kkData.forEach(item => {
+                    // Normalize RT/RW
+                    const rt = item.rt ? item.rt.toString().replace(/^0+/, '') : '?'
+                    const rw = item.rw ? item.rw.toString().replace(/^0+/, '') : '?'
+                    const region = `RT ${rt} / RW ${rw}`
+                    regionCounts[region] = (regionCounts[region] || 0) + 1
+                })
 
-            if (recentPenduduk) {
-                setRecentActivity(recentPenduduk)
+                const sorted = Object.entries(regionCounts)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5)
+                    .map(([name, count]) => ({ name, count }))
+
+                setTopRegions(sorted)
             }
 
         } catch (error) {
@@ -226,36 +235,50 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                {/* Top 5 Wilayah */}
                 <div className="col-span-4">
                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-blue-500" />
-                                Aktivitas Input Terbaru (Penduduk)
+                                <MapPin className="h-5 w-5 text-red-500" />
+                                Top 5 Sebaran Wilayah (RT/RW)
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
                                 {loading ? (
                                     <div className="text-center py-4 text-muted-foreground">Memuat data...</div>
-                                ) : recentActivity.length === 0 ? (
-                                    <div className="text-center py-4 text-muted-foreground">Belum ada aktivitas.</div>
+                                ) : topRegions.length === 0 ? (
+                                    <div className="text-center py-4 text-muted-foreground">Belum ada data wilayah.</div>
                                 ) : (
-                                    recentActivity.map((item) => (
-                                        <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors rounded-lg border border-border/50">
-                                            <div className="flex flex-col gap-1">
-                                                <p className="font-medium text-sm">{item.nama_lengkap}</p>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="font-mono bg-slate-100 px-1 rounded">{item.nik}</span>
-                                                    <span>&bull;</span>
-                                                    <span>{format(new Date(item.created_at), "d MMM yyyy, HH:mm", { locale: id })}</span>
+                                    <div className="space-y-3">
+                                        {topRegions.map((region, index) => (
+                                            <div key={index} className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${index === 0 ? 'bg-amber-100 text-amber-700' :
+                                                        index === 1 ? 'bg-slate-200 text-slate-700' :
+                                                            index === 2 ? 'bg-orange-100 text-orange-800' :
+                                                                'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                        #{index + 1}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-sm">{region.name}</p>
+                                                        <div className="bg-gray-200 rounded-full h-1.5 mt-1.5 w-32 relative overflow-hidden">
+                                                            <div
+                                                                className="bg-blue-600 h-1.5 rounded-full"
+                                                                style={{ width: `${(region.count / topRegions[0].count) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-lg font-bold text-gray-800">{region.count}</span>
+                                                    <p className="text-xs text-muted-foreground">KK Data</p>
                                                 </div>
                                             </div>
-                                            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                                                Baru
-                                            </span>
-                                        </div>
-                                    ))
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </CardContent>

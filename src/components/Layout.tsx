@@ -2,9 +2,19 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface LayoutProps {
     children: React.ReactNode
@@ -14,6 +24,7 @@ export default function Layout({ children }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [inputDataOpen, setInputDataOpen] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
     const location = useLocation()
     const navigate = useNavigate()
 
@@ -25,7 +36,7 @@ export default function Layout({ children }: LayoutProps) {
         getProfile()
 
         // Listen for auth changes (like profile updates)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 const name = session.user.user_metadata?.full_name || "Admin Petugas"
                 setUserName(name)
@@ -53,8 +64,12 @@ export default function Layout({ children }: LayoutProps) {
         }
     }, [location.pathname])
 
-    const handleLogout = () => {
-        // Add supabase logout here later
+    const handleLogoutClick = () => {
+        setLogoutDialogOpen(true)
+    }
+
+    const confirmLogout = async () => {
+        await supabase.auth.signOut()
         navigate("/")
     }
 
@@ -89,6 +104,24 @@ export default function Layout({ children }: LayoutProps) {
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
+            {/* Logout Alert */}
+            <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Apakah Anda yakin ingin keluar dari aplikasi SI-PENDUDUK?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmLogout} className="bg-red-600 hover:bg-red-700 text-white">
+                            Keluar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
@@ -133,7 +166,6 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
 
                 {/* Sidebar Nav */}
-                {/* Sidebar Nav */}
                 <div className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-2 transition-all">MENU UTAMA</p>}
                     <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
@@ -173,11 +205,13 @@ export default function Layout({ children }: LayoutProps) {
                                 <SubNavItem to="/input-data/kartu-keluarga" icon={Users} label="Kartu Keluarga" />
                                 <SubNavItem to="/input-data/ktp" icon={CreditCard} label="KTP Elektronik" />
                                 <SubNavItem to="/input-data/akta-kelahiran" icon={Baby} label="Akta Kelahiran" />
+                                <SubNavItem to="/input-data/akta-perkawinan" icon={Heart} label="Akta Perkawinan" />
                             </div>
                         </div>
                     </div>
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
+                    <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
                     <NavItem to="/settings" icon={Settings} label="Pengaturan" />
                 </div>
 
@@ -186,7 +220,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Button
                         variant="ghost"
                         className={cn("w-full text-red-600 hover:text-red-700 hover:bg-red-50", isCollapsed ? "justify-center px-0" : "justify-start")}
-                        onClick={handleLogout}
+                        onClick={handleLogoutClick}
                         title={isCollapsed ? "Keluar" : ""}
                     >
                         <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-2")} />

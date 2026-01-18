@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { Plus, Trash2, X, FileDown, Search, Eye } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { logActivity } from "@/lib/logger"
 import {
     Dialog,
     DialogContent,
@@ -130,9 +131,10 @@ export function KTPForm() {
                 }).eq("id", editId)
 
                 if (error) throw error
+                await logActivity("UPDATE DATA KTP", `Memperbarui KTP NIK: ${formData.nik} (${formData.nama})`)
                 toast.success("Data KTP berhasil diperbarui")
             } else {
-                // Insert
+                // Insert new
                 const { error } = await supabase.from("penduduk").insert({
                     nik: formData.nik,
                     nama_lengkap: formData.nama,
@@ -143,6 +145,7 @@ export function KTPForm() {
                 })
 
                 if (error) throw error
+                await logActivity("TAMBAH DATA KTP", `Menambahkan KTP NIK: ${formData.nik} (${formData.nama})`)
                 toast.success("Data KTP berhasil disimpan")
             }
 
@@ -183,8 +186,13 @@ export function KTPForm() {
     const confirmDelete = async () => {
         if (!deleteId) return
 
+        const item = dataList.find(d => d.id === deleteId)
+
         const { error } = await supabase.from("penduduk").delete().eq("id", deleteId)
         if (!error) {
+            if (item) {
+                await logActivity("HAPUS DATA KTP", `Menghapus KTP NIK: ${item.nik} (${item.nama_lengkap})`)
+            }
             toast.success("Data berhasil dihapus")
             fetchData()
         } else {
