@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, CheckCircle, MapPin } from "lucide-react"
+import { Users, FileText, CheckCircle, MapPin, Heart, HeartCrack, BookX } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { id } from "date-fns/locale"
@@ -24,7 +24,10 @@ export default function Dashboard() {
     const [stats, setStats] = useState({
         totalPenduduk: 0,
         totalKK: 0,
-        totalAkta: 0
+        totalAkta: 0,
+        totalAktaPerkawinan: 0,
+        totalAktaPerceraian: 0,
+        totalAktaKematian: 0
     })
     const [topRegions, setTopRegions] = useState<{ name: string, count: number }[]>([])
     const [inputHistory, setInputHistory] = useState<any[]>([])
@@ -41,11 +44,17 @@ export default function Dashboard() {
             const { count: countPenduduk } = await supabase.from("penduduk").select("*", { count: 'exact', head: true })
             const { count: countKK } = await supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true })
             const { count: countAkta } = await supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true })
+            const { count: countAktaPerkawinan } = await supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true })
+            const { count: countAktaPerceraian } = await supabase.from("akta_perceraian").select("*", { count: 'exact', head: true })
+            const { count: countAktaKematian } = await supabase.from("akta_kematian").select("*", { count: 'exact', head: true })
 
             setStats({
                 totalPenduduk: countPenduduk || 0,
                 totalKK: countKK || 0,
-                totalAkta: countAkta || 0
+                totalAkta: countAkta || 0,
+                totalAktaPerkawinan: countAktaPerkawinan || 0,
+                totalAktaPerceraian: countAktaPerceraian || 0,
+                totalAktaKematian: countAktaKematian || 0
             })
 
             // Fetch Input History (Last 7 Days)
@@ -63,10 +72,13 @@ export default function Dashboard() {
                 const { count: pCount } = await supabase.from("penduduk").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
                 const { count: kCount } = await supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
                 const { count: aCount } = await supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
+                const { count: apCount } = await supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
+                const { count: acCount } = await supabase.from("akta_perceraian").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
+                const { count: akCount } = await supabase.from("akta_kematian").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
 
                 historyData.push({
                     date: format(date, "d MMM", { locale: id }),
-                    count: (pCount || 0) + (kCount || 0) + (aCount || 0)
+                    count: (pCount || 0) + (kCount || 0) + (aCount || 0) + (apCount || 0) + (acCount || 0) + (akCount || 0)
                 })
             }
             setInputHistory(historyData)
@@ -143,6 +155,27 @@ export default function Dashboard() {
                     color="text-orange-600"
                     subtitle="Data Kelahiran"
                 />
+                <StatCard
+                    title="Total Akta Perkawinan"
+                    value={stats.totalAktaPerkawinan}
+                    icon={Heart}
+                    color="text-pink-600"
+                    subtitle="Data Perkawinan"
+                />
+                <StatCard
+                    title="Total Akta Perceraian"
+                    value={stats.totalAktaPerceraian}
+                    icon={HeartCrack}
+                    color="text-purple-600"
+                    subtitle="Data Perceraian"
+                />
+                <StatCard
+                    title="Total Akta Kematian"
+                    value={stats.totalAktaKematian}
+                    icon={BookX}
+                    color="text-slate-600"
+                    subtitle="Data Kematian"
+                />
             </div>
 
             {/* Charts Section */}
@@ -204,7 +237,10 @@ export default function Dashboard() {
                                         data={[
                                             { name: 'Penduduk', value: stats.totalPenduduk },
                                             { name: 'Kartu Keluarga', value: stats.totalKK },
-                                            { name: 'Akta', value: stats.totalAkta },
+                                            { name: 'Akta Kelahiran', value: stats.totalAkta },
+                                            { name: 'Akta Perkawinan', value: stats.totalAktaPerkawinan },
+                                            { name: 'Akta Perceraian', value: stats.totalAktaPerceraian },
+                                            { name: 'Akta Kematian', value: stats.totalAktaKematian },
                                         ]}
                                         cx="50%"
                                         cy="50%"
@@ -216,9 +252,12 @@ export default function Dashboard() {
                                         {[
                                             { name: 'Penduduk', value: stats.totalPenduduk },
                                             { name: 'Kartu Keluarga', value: stats.totalKK },
-                                            { name: 'Akta', value: stats.totalAkta },
+                                            { name: 'Akta Kelahiran', value: stats.totalAkta },
+                                            { name: 'Akta Perkawinan', value: stats.totalAktaPerkawinan },
+                                            { name: 'Akta Perceraian', value: stats.totalAktaPerceraian },
+                                            { name: 'Akta Kematian', value: stats.totalAktaKematian },
                                         ].map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={['#2563EB', '#16A34A', '#EA580C'][index % 3]} />
+                                            <Cell key={`cell-${index}`} fill={['#2563EB', '#16A34A', '#EA580C', '#E91E63', '#9C27B0', '#475569'][index % 6]} />
                                         ))}
                                     </Pie>
                                     <Tooltip />

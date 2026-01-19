@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
 import {
@@ -199,13 +199,15 @@ export default function Layout({ children }: LayoutProps) {
                         {/* Sub-menu */}
                         <div className={cn(
                             "overflow-hidden transition-all duration-200",
-                            inputDataOpen && !isCollapsed ? "max-h-48 mt-1" : "max-h-0"
+                            inputDataOpen && !isCollapsed ? "max-h-[300px] mt-1" : "max-h-0"
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/input-data/kartu-keluarga" icon={Users} label="Kartu Keluarga" />
                                 <SubNavItem to="/input-data/ktp" icon={CreditCard} label="KTP Elektronik" />
                                 <SubNavItem to="/input-data/akta-kelahiran" icon={Baby} label="Akta Kelahiran" />
                                 <SubNavItem to="/input-data/akta-perkawinan" icon={Heart} label="Akta Perkawinan" />
+                                <SubNavItem to="/input-data/akta-perceraian" icon={HeartCrack} label="Akta Perceraian" />
+                                <SubNavItem to="/input-data/akta-kematian" icon={BookX} label="Akta Kematian" />
                             </div>
                         </div>
                     </div>
@@ -242,8 +244,11 @@ export default function Layout({ children }: LayoutProps) {
                                 location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
                                     location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
                                         location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
-                                            location.pathname === "/settings" ? "Pengaturan Akun" :
-                                                "Admin Panel"}
+                                            location.pathname === "/input-data/akta-perkawinan" ? "Input Akta Perkawinan" :
+                                                location.pathname === "/input-data/akta-perceraian" ? "Input Akta Perceraian" :
+                                                    location.pathname === "/input-data/akta-kematian" ? "Input Akta Kematian" :
+                                                        location.pathname === "/settings" ? "Pengaturan Akun" :
+                                                            "Admin Panel"}
                         </h1>
                     </div>
                     <div className="flex items-center gap-2">

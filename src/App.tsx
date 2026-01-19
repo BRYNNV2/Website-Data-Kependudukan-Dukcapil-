@@ -5,6 +5,8 @@ import InputKK from "@/pages/InputKK"
 import InputKTP from "@/pages/InputKTP"
 import InputAkta from "@/pages/InputAkta"
 import InputAktaPerkawinan from "@/pages/InputAktaPerkawinan"
+import InputAktaPerceraian from "@/pages/InputAktaPerceraian"
+import InputAktaKematian from "@/pages/InputAktaKematian"
 import Layout from "@/components/Layout"
 import ActivityLog from "@/pages/ActivityLog"
 
@@ -29,6 +31,8 @@ function App() {
           <Route path="/input-data/ktp" element={<InputKTP />} />
           <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
           <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
+          <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
+          <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />
           <Route path="/activity-log" element={<ActivityLog />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
