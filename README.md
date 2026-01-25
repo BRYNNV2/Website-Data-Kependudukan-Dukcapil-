@@ -86,7 +86,8 @@ Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan d
 
 ## 📸 Tampilan Aplikasi
 
-*(Tambahkan screenshot aplikasi di sini nanti)*
+*<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4086064a-0765-4b90-a186-616e51aa46e7" />
+
 
 ---
 
