@@ -1,73 +1,105 @@
-# React + TypeScript + Vite
+# 🇮🇩 Sistem Informasi Data Kependudukan (SI-PENDUDUK)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![React](https://img.shields.io/badge/React-18-blue) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8) ![Supabase](https://img.shields.io/badge/Supabase-Database-3ecf8e)
 
-Currently, two official plugins are available:
+Sistem Informasi Data Kependudukan adalah aplikasi web modern yang dirancang untuk membantu Dinas Kependudukan dan Pencatatan Sipil (Dukcapil) dalam mengelola data administrasi kependudukan secara efisien, aman, dan digital.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Fitur Unggulan
 
-## React Compiler
+### 1. 📊 Dashboard Interaktif
+Memberikan ringkasan visual data kependudukan secara *real-time*, termasuk statistik pertumbuhan penduduk, jumlah kartu keluarga, dan grafik surat keterangan.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. 📂 Manajemen Data Lengkap
+Aplikasi ini mendukung input, edit, dan manajemen data untuk berbagai dokumen kependudukan:
+*   **Kartu Keluarga (KK)**
+*   **KTP Elektronik**
+*   **Akta Kelahiran**
+*   **Akta Kematian**
+*   **Akta Perkawinan**
+*   **Akta Perceraian**
 
-## Expanding the ESLint configuration
+### 3. 🛡️ Keamanan & Safety Net (Recycle Bin)
+Fitur **Anti-Hapus Tidak Sengaja**! Data yang dihapus tidak langsung hilang, melainkan masuk ke **"Tempat Sampah" (Recycle Bin)**.
+*   **Soft Delete**: Data hanya ditandai terhapus.
+*   **Restore**: Kembalikan data yang tidak sengaja terhapus dengan satu klik.
+*   **Hapus Permanen**: Opsi untuk membersihkan data selamanya jika benar-benar tidak dibutuhkan.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 4. 📈 Import & Export Excel Massal
+Mempermudah migrasi dan pelaporan data.
+*   **Import Excel**: Upload ratusan data sekaligus dari file `.xlsx`.
+*   **Export Excel**: Download laporan data dalam format Excel yang rapi.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 5. 🖨️ Cetak Laporan PDF
+Setiap kategori data dapat dicetak langsung menjadi laporan PDF resmi dengan format tabel standar dinas.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 6. 🌐 Peta Persebaran (GIS Lite)
+Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan demografis sederhana.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🛠️ Teknologi yang Digunakan
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+*   **Frontend**: React + Vite (TypeScript)
+*   **Styling**: Tailwind CSS + Shadcn/UI
+*   **Backend / Database**: Supabase (PostgreSQL)
+*   **Icons**: Lucide React
+*   **Utilities**:
+    *   `xlsx` (Manipulasi Excel)
+    *   `jspdf` & `jspdf-autotable` (Generate PDF)
+    *   `react-router-dom` (Navigasi)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+## 🚀 Cara Menjalankan Project
+
+### Prasyarat
+*   Node.js (versi 18 atau terbaru)
+*   Akun Supabase (untuk database)
+
+### Instalasi & Setup
+
+1.  **Clone Repository**
+    ```bash
+    git clone https://github.com/username-anda/si-penduduk.git
+    cd si-penduduk
+    ```
+
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Setup Environment Variables**
+    Buat file `.env` di root project dan isi dengan kredensial Supabase Anda:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+4.  **Jalankan Aplikasi**
+    ```bash
+    npm run dev
+    ```
+    Buka browser di `http://localhost:5173`.
+
+---
+
+## 📸 Tampilan Aplikasi
+
+*(Tambahkan screenshot aplikasi di sini nanti)*
+
+---
+
+## 📝 Catatan Pengembang (Developer Notes)
+
+*   **Database Schema**: Script SQL untuk setup tabel dan fitur *soft delete* tersedia di folder `src/lib/*.sql` (File ini di-ignore oleh git untuk keamanan).
+*   **Avatar Storage**: Menggunakan Supabase Storage bucket `avatars` (Public).
+
+---
+
+## 🤝 Kontribusi
+
+Project ini dikembangkan untuk tujuan magang/praktik kerja lapangan. Saran dan masukan sangat diapresiasi!
+
+---
+2026 © SI-PENDUDUK Dukcapil.
