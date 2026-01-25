@@ -86,7 +86,8 @@ Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan d
 
 ## 📸 Tampilan Aplikasi
 
-*(Tambahkan screenshot aplikasi di sini nanti)*
+*<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/4086064a-0765-4b90-a186-616e51aa46e7" />
+
 
 ---
 
@@ -99,7 +100,7 @@ Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan d
 
 ## 🤝 Kontribusi
 
-Project ini dikembangkan untuk tujuan magang/praktik kerja lapangan. Saran dan masukan sangat diapresiasi!
+Project ini dikembangkan untuk tujuan magang/praktik kerja lapangan oleh Muhammad Febri Yansah Mahasiswa Universitas Maritim Raja Ali Haji. Saran dan masukan sangat diapresiasi!
 
 ---
 2026 © SI-PENDUDUK Dukcapil.
