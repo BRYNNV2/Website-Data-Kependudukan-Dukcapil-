@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner"
 
 import Settings from "@/pages/Settings"
 import RecycleBin from "@/pages/RecycleBin"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const LayoutWrapper = () => (
   <Layout>
@@ -23,24 +24,26 @@ const LayoutWrapper = () => (
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route element={<LayoutWrapper />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
-          <Route path="/input-data/ktp" element={<InputKTP />} />
-          <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
-          <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
-          <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
-          <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />
-          <Route path="/activity-log" element={<ActivityLog />} />
-          <Route path="/recycle-bin" element={<RecycleBin />} />
-          <Route path="/settings" element={<Settings />} />
-        </Route>
-      </Routes>
-      <Toaster position="top-center" />
-    </Router>
+    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      <Router>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route element={<LayoutWrapper />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
+            <Route path="/input-data/ktp" element={<InputKTP />} />
+            <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
+            <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
+            <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
+            <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />
+            <Route path="/activity-log" element={<ActivityLog />} />
+            <Route path="/recycle-bin" element={<RecycleBin />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+        </Routes>
+        <Toaster position="top-center" />
+      </Router>
+    </ThemeProvider>
   )
 }
 

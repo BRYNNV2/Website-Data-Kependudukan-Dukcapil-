@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, LogOut, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
@@ -10,6 +11,16 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -25,6 +36,7 @@ interface UserProfile {
 export const ProfileDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [formData, setFormData] = useState({ full_name: '' });
@@ -35,6 +47,8 @@ export const ProfileDropdown = () => {
     const [scale, setScale] = useState(1);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         getProfile();
@@ -66,9 +80,14 @@ export const ProfileDropdown = () => {
         }
     }
 
-    const handleLogout = async () => {
+    const handleLogout = () => {
+        setLogoutDialogOpen(true);
+        setIsOpen(false); // Close the dropdown
+    };
+
+    const confirmLogout = async () => {
         await supabase.auth.signOut();
-        window.location.reload();
+        navigate("/");
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,6 +312,24 @@ export const ProfileDropdown = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Logout Alert */}
+            <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Konfirmasi Keluar</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Apakah Anda yakin ingin keluar dari aplikasi SI-PENDUDUK?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmLogout} className="bg-red-600 hover:bg-red-700 text-white">
+                            Keluar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

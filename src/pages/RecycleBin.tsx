@@ -25,7 +25,8 @@ export default function RecycleBin() {
     const [permanentDeleteId, setPermanentDeleteId] = useState<number | null>(null)
 
     const categories = [
-        { id: "penduduk", label: "Kartu Keluarga / KTP", table: "penduduk" },
+        { id: "penduduk", label: "Penduduk (KTP)", table: "penduduk" },
+        { id: "kartu_keluarga", label: "Kartu Keluarga", table: "kartu_keluarga" },
         { id: "akta_kelahiran", label: "Akta Kelahiran", table: "akta_kelahiran" },
         { id: "akta_kematian", label: "Akta Kematian", table: "akta_kematian" },
         { id: "akta_perkawinan", label: "Akta Perkawinan", table: "akta_perkawinan" },
@@ -109,6 +110,13 @@ export default function RecycleBin() {
                     <div>
                         <div className="font-medium text-slate-800">{item.nama_lengkap}</div>
                         <div className="text-xs text-muted-foreground">NIK: {item.nik}</div>
+                    </div>
+                )
+            case "kartu_keluarga":
+                return (
+                    <div>
+                        <div className="font-medium text-slate-800">KK: {item.no_kk}</div>
+                        <div className="text-xs text-muted-foreground">Kepala: {item.kepala_keluarga}</div>
                     </div>
                 )
             case "akta_kelahiran":

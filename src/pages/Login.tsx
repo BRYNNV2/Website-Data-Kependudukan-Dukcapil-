@@ -109,7 +109,7 @@ export default function Login() {
                     </div>
                 </div>
 
-                <div className="relative z-10 max-w-lg">
+                <div className="relative z-10 max-w-lg animate-in fade-in slide-in-from-left-8 duration-1000 delay-100">
                     <h1 className="text-5xl font-bold mb-6 leading-tight">
                         Sistem Informasi <br />
                         <span className="text-amber-400">Arsip Digital</span>
@@ -119,14 +119,14 @@ export default function Login() {
                     </p>
                 </div>
 
-                <div className="relative z-10 text-sm text-slate-400">
+                <div className="relative z-10 text-sm text-slate-400 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
                     &copy; {new Date().getFullYear()} Copyright by Mahasiswa Magang UMRAH 2026
                 </div>
             </div>
 
             {/* Right Side - Login Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50/50">
-                <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-gray-100 lg:border-none lg:shadow-none lg:bg-transparent">
+                <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-gray-100 lg:border-none lg:shadow-none lg:bg-transparent animate-in fade-in slide-in-from-bottom-8 duration-700">
                     {/* Mobile Logo (Visible only on mobile) */}
                     <div className="lg:hidden flex justify-center mb-8">
                         <div className="w-20 h-20 bg-white rounded-full shadow-md flex items-center justify-center p-2 mb-4">

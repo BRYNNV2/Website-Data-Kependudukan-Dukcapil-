@@ -37,6 +37,8 @@ interface AktaData {
     nama_ibu: string
     tgl_lahir_anak: string
     foto_dokumen?: string
+    keterangan?: string
+    deret?: string
     created_at: string
 }
 
@@ -52,19 +54,31 @@ export function AktaForm() {
         nama_anak: "",
         nama_ayah: "",
         nama_ibu: "",
-        tgl_lahir_anak: ""
+        tgl_lahir_anak: "",
+        keterangan: "",
+        deret: ""
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<AktaData | null>(null)
 
-    const filteredData = dataList.filter(item =>
-        (item.no_akta && item.no_akta.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        item.nama_anak.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.nama_ayah.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.nama_ibu.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    // Get unique Deret values for filter dropdown
+    const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
+
+    const filteredData = dataList.filter(item => {
+        const matchesSearchTerm =
+            (item.no_akta && item.no_akta.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            item.nama_anak.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.nama_ayah.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.nama_ibu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
+
+        const matchesDeret = searchDeret ? item.deret === searchDeret : true
+
+        return matchesSearchTerm && matchesDeret
+    })
 
     useEffect(() => {
         fetchData()
@@ -84,7 +98,7 @@ export function AktaForm() {
         setIsFetching(false)
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value })
     }
 
@@ -132,7 +146,9 @@ export function AktaForm() {
                     nama_ayah: formData.nama_ayah,
                     nama_ibu: formData.nama_ibu,
                     tgl_lahir_anak: formData.tgl_lahir_anak,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 }).eq("id", editId)
 
                 if (error) throw error
@@ -146,7 +162,9 @@ export function AktaForm() {
                     nama_ayah: formData.nama_ayah,
                     nama_ibu: formData.nama_ibu,
                     tgl_lahir_anak: formData.tgl_lahir_anak,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 })
 
                 if (error) throw error
@@ -164,7 +182,7 @@ export function AktaForm() {
     }
 
     const resetForm = () => {
-        setFormData({ no_akta: "", nama_anak: "", nama_ayah: "", nama_ibu: "", tgl_lahir_anak: "" })
+        setFormData({ no_akta: "", nama_anak: "", nama_ayah: "", nama_ibu: "", tgl_lahir_anak: "", keterangan: "", deret: "" })
         setSelectedFile(null)
         setCurrentImage(null)
         setShowForm(false)
@@ -181,7 +199,9 @@ export function AktaForm() {
             nama_anak: item.nama_anak,
             nama_ayah: item.nama_ayah,
             nama_ibu: item.nama_ibu,
-            tgl_lahir_anak: item.tgl_lahir_anak
+            tgl_lahir_anak: item.tgl_lahir_anak,
+            keterangan: item.keterangan || "",
+            deret: item.deret || ""
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
@@ -223,7 +243,9 @@ export function AktaForm() {
                 nama_anak: item['Nama Anak'] || item['nama_anak'] || '',
                 nama_ayah: item['Nama Ayah'] || item['nama_ayah'] || '',
                 nama_ibu: item['Nama Ibu'] || item['nama_ibu'] || '',
-                tgl_lahir_anak: item['Tanggal Lahir'] || item['tgl_lahir_anak'] || null
+                tgl_lahir_anak: item['Tanggal Lahir'] || item['tgl_lahir_anak'] || null,
+                keterangan: item['Keterangan'] || item['keterangan'] || '',
+                deret: item['Deret'] || item['deret'] || ''
             })).filter(item => item.nama_anak && item.tgl_lahir_anak)
 
             if (validData.length === 0) {
@@ -232,14 +254,7 @@ export function AktaForm() {
                 return
             }
 
-            const { error } = await supabase.from('akta_kelahiran').upsert(validData, { onConflict: 'no_akta' }) // If no_akta is empty/null, might be issue. But assuming it's key. 
-            // If no_akta is optional in DB but used for collision here, ensure it's provided or generate one? 
-            // DB schema likely requires no_akta or ID. Upsert needs a constraint.
-            // If no_akta is not unique constraint, upsert on ID? But ID is auto.
-            // I'll stick to 'no_akta' if provided, else just insert (upsert without conflict key implies insert if new).
-            // Actually upsert requires onConflict for update.
-            // If user imports new data without IDs, it's insert.
-            // I'll assume no_akta is key.
+            const { error } = await supabase.from('akta_kelahiran').upsert(validData, { onConflict: 'no_akta' })
 
             if (error) throw error
 
@@ -266,11 +281,13 @@ export function AktaForm() {
             item.nama_anak,
             item.nama_ayah,
             item.nama_ibu,
-            new Date(item.tgl_lahir_anak).toLocaleDateString('id-ID')
+            new Date(item.tgl_lahir_anak).toLocaleDateString('id-ID'),
+            item.keterangan || '-',
+            item.deret || '-'
         ])
 
         autoTable(doc, {
-            head: [['No', 'No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Lahir']],
+            head: [['No', 'No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Lahir', 'Keterangan', 'Deret']],
             body: tableData,
             startY: 25,
             theme: 'grid',
@@ -310,6 +327,12 @@ export function AktaForm() {
 
                                     <span className="font-semibold">Tgl Lahir Anak</span>
                                     <span className="col-span-2">: {formatDate(viewItem.tgl_lahir_anak)}</span>
+
+                                    <span className="font-semibold">Keterangan</span>
+                                    <span className="col-span-2">: {viewItem.keterangan || "-"}</span>
+
+                                    <span className="font-semibold">Deret</span>
+                                    <span className="col-span-2">: {viewItem.deret || "-"}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -351,35 +374,52 @@ export function AktaForm() {
             </AlertDialog>
 
             {/* Header with Search and Add Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data Akta Kelahiran</h2>
                     <p className="text-sm text-muted-foreground">Kelola data Akta Kelahiran</p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <ExcelActions data={dataList} fileName="Data_Akta_Kelahiran" onImport={handleImport} isLoading={loading} />
+
+                <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
+                    {/* Filter Deret */}
+                    <div className="w-full sm:w-40">
+                        <select
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={searchDeret}
+                            onChange={(e) => setSearchDeret(e.target.value)}
+                        >
+                            <option value="">Semua Deret</option>
+                            {uniqueDeret.map((deret, index) => (
+                                <option key={index} value={deret as string}>{deret}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari No. Akta / Nama..."
+                            placeholder="Cari No. Akta / Nama / Ket..."
                             className="pl-8"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" onClick={handleDownloadPDF} className="gap-2">
-                        <FileDown className="h-4 w-4" />
-                        Export PDF
-                    </Button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <ExcelActions data={dataList} fileName="Data_Akta_Kelahiran" onImport={handleImport} isLoading={loading} />
+                        <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4" />
+                            <span className="hidden sm:inline">PDF</span>
+                        </Button>
+                    </div>
                     <Button onClick={() => {
                         if (showForm) {
                             resetForm()
                         } else {
                             setShowForm(true)
                         }
-                    }} className="gap-2">
+                    }} className="gap-2 w-full sm:w-auto">
                         {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        {showForm ? "Batal" : "Tambah Data Akta"}
+                        {showForm ? "Batal" : "Tambah Data"}
                     </Button>
                 </div>
             </div>
@@ -416,6 +456,47 @@ export function AktaForm() {
                             <Label htmlFor="tgl_lahir_anak">Tanggal Lahir Anak</Label>
                             <Input id="tgl_lahir_anak" type="date" value={formData.tgl_lahir_anak} onChange={handleChange} />
                         </div>
+
+                        {/* New Fields: Keterangan & Deret */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="deret">Deret</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="deret"
+                                        list="deret-list"
+                                        placeholder="Contoh: 4"
+                                        value={formData.deret}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="deret-list">
+                                        {Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="keterangan">Keterangan</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="keterangan"
+                                        list="keterangan-list"
+                                        placeholder="Contoh: BOOK AKTA 36"
+                                        value={formData.keterangan}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="keterangan-list">
+                                        {Array.from(new Set(dataList.map(item => item.keterangan).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <ImageUploadCapture
                                 label="Foto Dokumen Akta (Fisik)"
@@ -454,8 +535,8 @@ export function AktaForm() {
                                     <tr className="border-b bg-muted/50">
                                         <th className="text-left p-3 font-medium">No. Akta</th>
                                         <th className="text-left p-3 font-medium">Nama Anak</th>
-                                        <th className="text-left p-3 font-medium">Orang Tua</th>
-                                        <th className="text-left p-3 font-medium">Tgl Lahir</th>
+                                        <th className="text-left p-3 font-medium">Deret</th>
+                                        <th className="text-left p-3 font-medium">Keterangan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
@@ -464,11 +545,8 @@ export function AktaForm() {
                                         <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
                                             <td className="p-3 font-mono text-xs">{item.no_akta || "-"}</td>
                                             <td className="p-3">{item.nama_anak}</td>
-                                            <td className="p-3 text-muted-foreground text-xs">
-                                                <div>Ayah: {item.nama_ayah || "-"}</div>
-                                                <div>Ibu: {item.nama_ibu || "-"}</div>
-                                            </td>
-                                            <td className="p-3">{formatDate(item.tgl_lahir_anak)}</td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"

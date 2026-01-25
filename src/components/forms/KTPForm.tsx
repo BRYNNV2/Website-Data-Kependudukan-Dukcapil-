@@ -37,6 +37,8 @@ interface KTPData {
     tgl_lahir: string
     pekerjaan: string
     foto_dokumen?: string
+    keterangan?: string
+    deret?: string
     created_at: string
 }
 
@@ -52,18 +54,30 @@ export function KTPForm() {
         nama: "",
         tempat_lahir: "",
         tgl_lahir: "",
-        pekerjaan: ""
+        pekerjaan: "",
+        keterangan: "",
+        deret: ""
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<KTPData | null>(null)
 
-    const filteredData = dataList.filter(item =>
-        item.nik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.pekerjaan && item.pekerjaan.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+    // Get unique Deret values for filter dropdown
+    const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
+
+    const filteredData = dataList.filter(item => {
+        const matchesSearchTerm =
+            item.nik.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.pekerjaan && item.pekerjaan.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
+
+        const matchesDeret = searchDeret ? item.deret === searchDeret : true
+
+        return matchesSearchTerm && matchesDeret
+    })
 
     useEffect(() => {
         fetchData()
@@ -83,14 +97,14 @@ export function KTPForm() {
         setIsFetching(false)
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value })
     }
 
     const handleSubmit = async () => {
         // Validation
         if (!formData.nik || !formData.nama || !formData.tempat_lahir || !formData.tgl_lahir || !formData.pekerjaan) {
-            toast.error("Semua field harus diisi!")
+            toast.error("Semua field wajib harus diisi!")
             return
         }
 
@@ -129,7 +143,9 @@ export function KTPForm() {
                     tempat_lahir: formData.tempat_lahir,
                     tgl_lahir: formData.tgl_lahir,
                     pekerjaan: formData.pekerjaan,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 }).eq("id", editId)
 
                 if (error) throw error
@@ -143,7 +159,9 @@ export function KTPForm() {
                     tempat_lahir: formData.tempat_lahir,
                     tgl_lahir: formData.tgl_lahir,
                     pekerjaan: formData.pekerjaan,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 })
 
                 if (error) throw error
@@ -161,7 +179,7 @@ export function KTPForm() {
     }
 
     const resetForm = () => {
-        setFormData({ nik: "", nama: "", tempat_lahir: "", tgl_lahir: "", pekerjaan: "" })
+        setFormData({ nik: "", nama: "", tempat_lahir: "", tgl_lahir: "", pekerjaan: "", keterangan: "", deret: "" })
         setSelectedFile(null)
         setCurrentImage(null)
         setShowForm(false)
@@ -178,7 +196,9 @@ export function KTPForm() {
             nama: item.nama_lengkap,
             tempat_lahir: item.tempat_lahir,
             tgl_lahir: item.tgl_lahir,
-            pekerjaan: item.pekerjaan
+            pekerjaan: item.pekerjaan,
+            keterangan: item.keterangan || "",
+            deret: item.deret || ""
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
@@ -221,6 +241,8 @@ export function KTPForm() {
                 tempat_lahir: item['Tempat Lahir'] || item['tempat_lahir'] || '',
                 tgl_lahir: item['Tanggal Lahir'] || item['tgl_lahir'] || null,
                 pekerjaan: item['Pekerjaan'] || item['pekerjaan'] || '',
+                keterangan: item['Keterangan'] || item['keterangan'] || '',
+                deret: item['Deret'] || item['deret'] || ''
             })).filter(item => item.nik && item.nama_lengkap && item.nik.length === 16)
 
             if (validData.length === 0) {
@@ -255,11 +277,13 @@ export function KTPForm() {
             item.nik,
             item.nama_lengkap,
             `${item.tempat_lahir}, ${new Date(item.tgl_lahir).toLocaleDateString('id-ID')}`,
-            item.pekerjaan
+            item.pekerjaan,
+            item.keterangan || '-',
+            item.deret || '-'
         ])
 
         autoTable(doc, {
-            head: [['No', 'NIK', 'Nama Lengkap', 'TTL', 'Pekerjaan']],
+            head: [['No', 'NIK', 'Nama Lengkap', 'TTL', 'Pekerjaan', 'Keterangan', 'Deret']],
             body: tableData,
             startY: 25,
             theme: 'grid',
@@ -299,6 +323,12 @@ export function KTPForm() {
 
                                     <span className="font-semibold">Pekerjaan</span>
                                     <span className="col-span-2">: {viewItem.pekerjaan}</span>
+
+                                    <span className="font-semibold">Keterangan</span>
+                                    <span className="col-span-2">: {viewItem.keterangan || "-"}</span>
+
+                                    <span className="font-semibold">Deret</span>
+                                    <span className="col-span-2">: {viewItem.deret || "-"}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -340,35 +370,52 @@ export function KTPForm() {
             </AlertDialog>
 
             {/* Header with Search and Add Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data KTP Elektronik</h2>
                     <p className="text-sm text-muted-foreground">Kelola data KTP Elektronik</p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <ExcelActions data={dataList} fileName="Data_KTP" onImport={handleImport} isLoading={loading} />
+
+                <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
+                    {/* Filter Deret */}
+                    <div className="w-full sm:w-40">
+                        <select
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={searchDeret}
+                            onChange={(e) => setSearchDeret(e.target.value)}
+                        >
+                            <option value="">Semua Deret</option>
+                            {uniqueDeret.map((deret, index) => (
+                                <option key={index} value={deret as string}>{deret}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari NIK / Nama / Pekerjaan..."
+                            placeholder="Cari NIK / Nama / Ket..."
                             className="pl-8"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" onClick={handleDownloadPDF} className="gap-2">
-                        <FileDown className="h-4 w-4" />
-                        Export PDF
-                    </Button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <ExcelActions data={dataList} fileName="Data_KTP" onImport={handleImport} isLoading={loading} />
+                        <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4" />
+                            <span className="hidden sm:inline">PDF</span>
+                        </Button>
+                    </div>
                     <Button onClick={() => {
                         if (showForm) {
                             resetForm()
                         } else {
                             setShowForm(true)
                         }
-                    }} className="gap-2">
+                    }} className="gap-2 w-full sm:w-auto">
                         {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        {showForm ? "Batal" : "Tambah Data KTP"}
+                        {showForm ? "Batal" : "Tambah Data"}
                     </Button>
                 </div>
             </div>
@@ -405,6 +452,47 @@ export function KTPForm() {
                             <Label htmlFor="pekerjaan">Pekerjaan</Label>
                             <Input id="pekerjaan" value={formData.pekerjaan} onChange={handleChange} placeholder="Pekerjaan saat ini" />
                         </div>
+
+                        {/* New Fields: Keterangan & Deret */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="deret">Deret</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="deret"
+                                        list="deret-list"
+                                        placeholder="Contoh: 4"
+                                        value={formData.deret}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="deret-list">
+                                        {Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="keterangan">Keterangan</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="keterangan"
+                                        list="keterangan-list"
+                                        placeholder="Contoh: BOOK KTP 36"
+                                        value={formData.keterangan}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="keterangan-list">
+                                        {Array.from(new Set(dataList.map(item => item.keterangan).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <ImageUploadCapture
                                 label="Foto KTP / Bukti Pendukung"
@@ -444,8 +532,8 @@ export function KTPForm() {
                                     <tr className="border-b bg-muted/50">
                                         <th className="text-left p-3 font-medium">NIK</th>
                                         <th className="text-left p-3 font-medium">Nama Lengkap</th>
-                                        <th className="text-left p-3 font-medium">TTL</th>
-                                        <th className="text-left p-3 font-medium">Pekerjaan</th>
+                                        <th className="text-left p-3 font-medium">Deret</th>
+                                        <th className="text-left p-3 font-medium">Keterangan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
@@ -454,10 +542,8 @@ export function KTPForm() {
                                         <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
                                             <td className="p-3 font-mono text-xs">{item.nik}</td>
                                             <td className="p-3">{item.nama_lengkap}</td>
-                                            <td className="p-3 text-muted-foreground">
-                                                {item.tempat_lahir || "-"}, {formatDate(item.tgl_lahir)}
-                                            </td>
-                                            <td className="p-3">{item.pekerjaan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"

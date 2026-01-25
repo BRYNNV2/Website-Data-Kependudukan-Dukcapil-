@@ -17,6 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { ModeToggle } from "./mode-toggle"
 
 interface LayoutProps {
     children: React.ReactNode
@@ -34,6 +35,10 @@ export default function Layout({ children }: LayoutProps) {
     useEffect(() => {
         const getName = async () => {
             const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                navigate("/")
+                return
+            }
             if (user?.user_metadata?.full_name) {
                 setUserName(user.user_metadata.full_name)
             }
@@ -92,7 +97,7 @@ export default function Layout({ children }: LayoutProps) {
     )
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="min-h-screen bg-gray-50 dark:bg-background flex">
             {/* Logout Alert */}
             <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
                 <AlertDialogContent>
@@ -122,16 +127,16 @@ export default function Layout({ children }: LayoutProps) {
             {/* Sidebar */}
             {/* Sidebar */}
             <aside className={cn(
-                "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-white border-r transition-all duration-300 transform lg:transform-none flex flex-col",
+                "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-background border-r transition-all duration-300 transform lg:transform-none flex flex-col",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full",
                 isCollapsed ? "w-20" : "w-64"
             )}>
                 {/* Sidebar Header */}
-                <div className={cn("h-16 flex items-center border-b border-gray-100 relative bg-white z-20", isCollapsed ? "justify-center px-0" : "px-6")}>
+                <div className={cn("h-16 flex items-center border-b relative z-20", isCollapsed ? "justify-center px-0" : "px-6")}>
                     <div className={cn("flex items-center gap-3 transition-all duration-300", isCollapsed ? "justify-center w-full" : "")}>
                         <img src={logoDinas} alt="Logo" className="h-8 w-8 object-contain" />
                         <span className={cn(
-                            "font-bold text-lg text-slate-800 tracking-tight whitespace-nowrap overflow-hidden transition-all duration-300",
+                            "font-bold text-lg text-foreground tracking-tight whitespace-nowrap overflow-hidden transition-all duration-300",
                             isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
                         )}>
                             SI-PENDUDUK
@@ -147,7 +152,7 @@ export default function Layout({ children }: LayoutProps) {
 
                     {/* Desktop Toggle Button - Enhanced */}
                     <button
-                        className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-sm rounded-full p-1.5 text-slate-400 hover:text-indigo-600 hidden lg:flex items-center justify-center z-50 transition-colors"
+                        className="absolute -right-3 top-1/2 -translate-y-1/2 bg-background border shadow-sm rounded-full p-1.5 text-muted-foreground hover:text-primary hidden lg:flex items-center justify-center z-50 transition-colors"
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
@@ -209,7 +214,7 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
 
                 {/* Sidebar Footer */}
-                <div className="p-4 border-t bg-gray-50 flex justify-center">
+                <div className="p-4 border-t bg-gray-50/50 dark:bg-muted/20 flex justify-center">
                     <Button
                         variant="ghost"
                         className={cn("w-full text-red-600 hover:text-red-700 hover:bg-red-50", isCollapsed ? "justify-center px-0" : "justify-start")}
@@ -225,7 +230,7 @@ export default function Layout({ children }: LayoutProps) {
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
                 {/* Header */}
-                <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200/60 flex items-center px-4 lg:px-8 justify-between sticky top-0 z-40 transition-all">
+                <header className="h-20 bg-background/80 backdrop-blur-md border-b flex items-center px-4 lg:px-8 justify-between sticky top-0 z-40 transition-all">
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" size="icon" className="lg:hidden text-slate-500" onClick={() => setSidebarOpen(true)}>
                             <Menu className="h-5 w-5" />
@@ -234,7 +239,7 @@ export default function Layout({ children }: LayoutProps) {
                         {/* Dynamic Header Content */}
                         {location.pathname === "/dashboard" ? (
                             <div>
-                                <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                                     Selamat Datang Kembali, {userName} <span className="text-xl">👋</span>
                                 </h1>
                                 <p className="text-sm text-muted-foreground hidden sm:block">
@@ -245,7 +250,7 @@ export default function Layout({ children }: LayoutProps) {
                             <div className="flex items-center gap-2 text-sm lg:text-base">
                                 <span className="text-muted-foreground font-medium hidden sm:inline-block">Pages</span>
                                 <span className="text-muted-foreground hidden sm:inline-block">/</span>
-                                <h1 className="text-base lg:text-lg font-bold text-slate-800">
+                                <h1 className="text-base lg:text-lg font-bold text-foreground">
                                     {location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
                                         location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
                                             location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
@@ -260,9 +265,10 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
 
                     {/* Right Side Tools */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <ModeToggle />
                         <NotificationDropdown />
-                        <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+                        <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>
 
                         {/* User Profile */}
                         <ProfileDropdown />

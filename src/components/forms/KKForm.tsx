@@ -41,6 +41,8 @@ interface KKData {
     longitude?: number
     foto_dokumen?: string
     tanggal_dikeluarkan?: string
+    keterangan?: string
+    deret?: string
     created_at: string
 }
 
@@ -59,18 +61,30 @@ export function KKForm() {
         rw: "",
         latitude: "",
         longitude: "",
-        tanggal_dikeluarkan: ""
+        tanggal_dikeluarkan: "",
+        keterangan: "",
+        deret: ""
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<KKData | null>(null)
 
-    const filteredData = dataList.filter(item =>
-        item.no_kk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.kepala_keluarga.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.alamat.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    // Get unique Deret values for filter dropdown
+    const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
+
+    const filteredData = dataList.filter(item => {
+        const matchesSearchTerm =
+            item.no_kk.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.kepala_keluarga.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.alamat.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
+
+        const matchesDeret = searchDeret ? item.deret === searchDeret : true
+
+        return matchesSearchTerm && matchesDeret
+    })
 
     useEffect(() => {
         fetchData()
@@ -90,14 +104,14 @@ export function KKForm() {
         setIsFetching(false)
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value })
     }
 
     const handleSubmit = async () => {
         // Validation
         if (!formData.no_kk || !formData.kepala_keluarga || !formData.alamat || !formData.rt || !formData.rw || !formData.tanggal_dikeluarkan) {
-            toast.error("Semua field harus diisi!")
+            toast.error("Semua field wajib harus diisi!")
             return
         }
 
@@ -118,9 +132,6 @@ export function KKForm() {
                     .upload(fileName, selectedFile)
 
                 if (uploadError) {
-                    // Start bucket creation if not exists (handling this in code is hard, assume it exists or fail gracefully)
-                    // For now, if upload fails, we warn but proceed? No, that defeats the purpose.
-                    // We will try to rely on the bucket existing.
                     throw new Error("Gagal upload foto: " + uploadError.message)
                 }
 
@@ -142,7 +153,9 @@ export function KKForm() {
                     latitude: formData.latitude ? parseFloat(formData.latitude) : null,
                     longitude: formData.longitude ? parseFloat(formData.longitude) : null,
                     foto_dokumen: photoUrl,
-                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan
+                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 }).eq("id", editId)
 
                 if (error) throw error
@@ -159,10 +172,13 @@ export function KKForm() {
                     latitude: formData.latitude ? parseFloat(formData.latitude) : null,
                     longitude: formData.longitude ? parseFloat(formData.longitude) : null,
                     foto_dokumen: photoUrl,
-                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan
+                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan,
+                    keterangan: formData.keterangan,
+                    deret: formData.deret
                 })
 
                 if (error) throw error
+
                 await logActivity("TAMBAH DATA KK", `Menambahkan KK No. ${formData.no_kk} (${formData.kepala_keluarga})`)
                 toast.success("Data Kartu Keluarga berhasil disimpan")
             }
@@ -185,7 +201,9 @@ export function KKForm() {
             rw: "",
             latitude: "",
             longitude: "",
-            tanggal_dikeluarkan: ""
+            tanggal_dikeluarkan: "",
+            keterangan: "",
+            deret: ""
         })
         setSelectedFile(null)
         setCurrentImage(null)
@@ -206,15 +224,14 @@ export function KKForm() {
             rw: item.rw,
             latitude: item.latitude?.toString() || "",
             longitude: item.longitude?.toString() || "",
-            tanggal_dikeluarkan: item.tanggal_dikeluarkan || ""
+            tanggal_dikeluarkan: item.tanggal_dikeluarkan || "",
+            keterangan: item.keterangan || "",
+            deret: item.deret || ""
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
         setShowForm(true)
     }
-
-    // ... delete and pdf functions
-
 
     const confirmDelete = async () => {
         if (!deleteId) return
@@ -251,11 +268,13 @@ export function KKForm() {
             item.kepala_keluarga,
             item.alamat,
             `${item.rt}/${item.rw}`,
-            item.tanggal_dikeluarkan || '-'
+            item.tanggal_dikeluarkan || '-',
+            item.keterangan || '-',
+            item.deret || '-'
         ])
 
         autoTable(doc, {
-            head: [['No', 'No. KK', 'Kepala Keluarga', 'Alamat', 'RT/RW', 'Tgl Dikeluarkan']],
+            head: [['No', 'No. KK', 'Kepala Keluarga', 'Alamat', 'RT/RW', 'Tgl Dikeluarkan', 'Keterangan', 'Deret']],
             body: tableData,
             startY: 25,
             theme: 'grid',
@@ -277,7 +296,9 @@ export function KKForm() {
                 rw: (row["RW"] || row["rw"] || "").toString(),
                 tanggal_dikeluarkan: row["Tanggal Dikeluarkan"] || row["tanggal_dikeluarkan"] || null,
                 latitude: parseFloat(row["Latitude"] || row["latitude"] || "0"),
-                longitude: parseFloat(row["Longitude"] || row["longitude"] || "0")
+                longitude: parseFloat(row["Longitude"] || row["longitude"] || "0"),
+                keterangan: row["Keterangan"] || row["keterangan"] || "",
+                deret: row["Deret"] || row["deret"] || ""
             })).filter((item: any) => item.no_kk && item.kepala_keluarga)
 
             if (validData.length === 0) {
@@ -328,6 +349,12 @@ export function KKForm() {
 
                                     <span className="font-semibold">Tanggal Dikeluarkan</span>
                                     <span className="col-span-2">: {viewItem.tanggal_dikeluarkan || "-"}</span>
+
+                                    <span className="font-semibold">Keterangan</span>
+                                    <span className="col-span-2">: {viewItem.keterangan || "-"}</span>
+
+                                    <span className="font-semibold">Deret</span>
+                                    <span className="col-span-2">: {viewItem.deret || "-"}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -380,26 +407,42 @@ export function KKForm() {
             </AlertDialog>
 
             {/* Header with Search and Add Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data Kartu Keluarga</h2>
                     <p className="text-sm text-muted-foreground">Kelola data Kartu Keluarga</p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+
+                <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
+                    {/* Filter Deret */}
+                    <div className="w-full sm:w-40">
+                        <select
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={searchDeret}
+                            onChange={(e) => setSearchDeret(e.target.value)}
+                        >
+                            <option value="">Semua Deret</option>
+                            {uniqueDeret.map((deret, index) => (
+                                <option key={index} value={deret as string}>{deret}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari No. KK / Nama / Alamat..."
+                            placeholder="Cari No. KK / Nama / Ket..."
                             className="pl-8"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <ExcelActions data={dataList} fileName="Data_Kartu_Keluarga" onImport={handleImport} isLoading={loading} />
                         <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4" />
-                            PDF
+                            <span className="hidden sm:inline">PDF</span>
                         </Button>
                     </div>
                     <Button onClick={() => {
@@ -408,9 +451,9 @@ export function KKForm() {
                         } else {
                             setShowForm(true)
                         }
-                    }} className="gap-2">
+                    }} className="gap-2 w-full sm:w-auto">
                         {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        {showForm ? "Batal" : "Tambah Data KK"}
+                        {showForm ? "Batal" : "Tambah Data"}
                     </Button>
                 </div>
             </div>
@@ -456,6 +499,46 @@ export function KKForm() {
                                 value={formData.tanggal_dikeluarkan}
                                 onChange={handleChange}
                             />
+                        </div>
+
+                        {/* New Fields: Keterangan & Deret */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="deret">Deret</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="deret"
+                                        list="deret-list"
+                                        placeholder="Contoh: 4"
+                                        value={formData.deret}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="deret-list">
+                                        {Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="keterangan">Keterangan</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="keterangan"
+                                        list="keterangan-list"
+                                        placeholder="Contoh: BOOK KK 36"
+                                        value={formData.keterangan}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                    />
+                                    <datalist id="keterangan-list">
+                                        {Array.from(new Set(dataList.map(item => item.keterangan).filter(Boolean))).sort().map((item, index) => (
+                                            <option key={index} value={item} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -520,9 +603,8 @@ export function KKForm() {
                                     <tr className="border-b bg-muted/50">
                                         <th className="text-left p-3 font-medium">No. KK</th>
                                         <th className="text-left p-3 font-medium">Kepala Keluarga</th>
-                                        <th className="text-left p-3 font-medium">Alamat</th>
-                                        <th className="text-left p-3 font-medium">RT/RW</th>
-                                        <th className="text-left p-3 font-medium">Tgl Dikeluarkan</th>
+                                        <th className="text-left p-3 font-medium">Deret</th>
+                                        <th className="text-left p-3 font-medium">Keterangan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
@@ -531,9 +613,8 @@ export function KKForm() {
                                         <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
                                             <td className="p-3 font-mono text-xs">{item.no_kk}</td>
                                             <td className="p-3">{item.kepala_keluarga}</td>
-                                            <td className="p-3 text-muted-foreground">{item.alamat || "-"}</td>
-                                            <td className="p-3">{item.rt || "-"}/{item.rw || "-"}</td>
-                                            <td className="p-3">{item.tanggal_dikeluarkan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"

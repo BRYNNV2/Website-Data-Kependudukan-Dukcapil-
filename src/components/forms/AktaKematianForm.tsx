@@ -45,6 +45,8 @@ interface AktaKematianData {
     tempat_lahir: string
     tanggal_lahir: string
     foto_dokumen?: string
+    keterangan?: string
+    deret?: string
     created_at: string
 }
 
@@ -61,12 +63,19 @@ export function AktaKematianForm() {
         nama: "",
         tanggal_meninggal: "",
         tempat_lahir: "",
-        tanggal_lahir: ""
+        tanggal_lahir: "",
+        keterangan: "",
+        deret: ""
+    })
+    const [suggestions, setSuggestions] = useState({
+        keterangan: [] as string[],
+        deret: [] as string[]
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedYear, setSelectedYear] = useState<string>("all")
+    const [selectedDeret, setSelectedDeret] = useState<string>("all")
     const [viewItem, setViewItem] = useState<AktaKematianData | null>(null)
 
     const availableYears = useMemo(() => {
@@ -74,13 +83,19 @@ export function AktaKematianForm() {
         return [...new Set(years)].sort((a, b) => b.localeCompare(a))
     }, [dataList])
 
+    const uniqueDeretList = useMemo(() => {
+        return [...new Set(dataList.map(item => item.deret).filter(Boolean))].sort() as string[]
+    }, [dataList])
+
     const filteredData = dataList.filter(item => {
         const matchesSearch = item.no_surat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.nama.toLowerCase().includes(searchTerm.toLowerCase())
+            item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
 
         const matchesYear = selectedYear === "all" || new Date(item.tanggal_meninggal).getFullYear().toString() === selectedYear
+        const matchesDeret = selectedDeret === "all" || item.deret === selectedDeret
 
-        return matchesSearch && matchesYear
+        return matchesSearch && matchesYear && matchesDeret
     })
 
     useEffect(() => {
@@ -97,6 +112,9 @@ export function AktaKematianForm() {
 
         if (!error && data) {
             setDataList(data)
+            const uniqueKet = [...new Set(data.map(item => item.keterangan).filter(Boolean))] as string[]
+            const uniqueDeret = [...new Set(data.map(item => item.deret).filter(Boolean))] as string[]
+            setSuggestions({ keterangan: uniqueKet, deret: uniqueDeret })
         }
         setIsFetching(false)
     }
@@ -137,6 +155,8 @@ export function AktaKematianForm() {
                 tanggal_meninggal: formData.tanggal_meninggal,
                 tempat_lahir: formData.tempat_lahir,
                 tanggal_lahir: formData.tanggal_lahir,
+                keterangan: formData.keterangan,
+                deret: formData.deret,
                 foto_dokumen: photoUrl
             }
 
@@ -162,7 +182,7 @@ export function AktaKematianForm() {
     }
 
     const resetForm = () => {
-        setFormData({ no_surat: "", nama: "", tanggal_meninggal: "", tempat_lahir: "", tanggal_lahir: "" })
+        setFormData({ no_surat: "", nama: "", tanggal_meninggal: "", tempat_lahir: "", tanggal_lahir: "", keterangan: "", deret: "" })
         setSelectedFile(null)
         setCurrentImage(null)
         setShowForm(false)
@@ -175,7 +195,9 @@ export function AktaKematianForm() {
             nama: item.nama,
             tanggal_meninggal: item.tanggal_meninggal,
             tempat_lahir: item.tempat_lahir || "",
-            tanggal_lahir: item.tanggal_lahir || ""
+            tanggal_lahir: item.tanggal_lahir || "",
+            keterangan: item.keterangan || "",
+            deret: item.deret || ""
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
@@ -205,7 +227,9 @@ export function AktaKematianForm() {
                 nama: item['Nama'] || item['nama'] || item['Nama Lengkap'] || '',
                 tanggal_meninggal: item['Tanggal Meninggal'] || item['tanggal_meninggal'] || null,
                 tempat_lahir: item['Tempat Lahir'] || item['tempat_lahir'] || '',
-                tanggal_lahir: item['Tanggal Lahir'] || item['tanggal_lahir'] || null
+                tanggal_lahir: item['Tanggal Lahir'] || item['tanggal_lahir'] || null,
+                keterangan: item['Keterangan'] || item['keterangan'] || '',
+                deret: item['Deret'] || item['deret'] || ''
             })).filter(item => item.nama && item.tanggal_meninggal)
 
             if (validData.length === 0) {
@@ -238,11 +262,13 @@ export function AktaKematianForm() {
             item.no_surat,
             item.nama,
             new Date(item.tanggal_meninggal).toLocaleDateString('id-ID'),
-            `${item.tempat_lahir || '-'}, ${item.tanggal_lahir ? new Date(item.tanggal_lahir).toLocaleDateString('id-ID') : '-'}`
+            `${item.tempat_lahir || '-'}, ${item.tanggal_lahir ? new Date(item.tanggal_lahir).toLocaleDateString('id-ID') : '-'}`,
+            item.keterangan || '-',
+            item.deret || '-'
         ])
 
         autoTable(doc, {
-            head: [['No', 'No. Surat', 'Nama', 'Waktu Meninggal', 'Lahir']],
+            head: [['No', 'No. Surat', 'Nama', 'Waktu Meninggal', 'Lahir', 'Keterangan', 'Deret']],
             body: tableData,
             startY: 25,
             theme: 'grid',
@@ -276,6 +302,10 @@ export function AktaKematianForm() {
                                     <span>{viewItem.tempat_lahir || "-"}</span>
                                     <span className="font-semibold text-muted-foreground">Tgl Lahir:</span>
                                     <span>{viewItem.tanggal_lahir ? new Date(viewItem.tanggal_lahir).toLocaleDateString('id-ID', { dateStyle: 'long' }) : "-"}</span>
+                                    <span className="font-semibold text-muted-foreground">Keterangan:</span>
+                                    <span>{viewItem.keterangan || "-"}</span>
+                                    <span className="font-semibold text-muted-foreground">Deret:</span>
+                                    <span>{viewItem.deret || "-"}</span>
                                 </div>
                             </div>
                             <div>
@@ -317,36 +347,54 @@ export function AktaKematianForm() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                <div className="w-full xl:w-auto">
                     <h2 className="text-2xl font-bold text-gray-800">Data Akta Kematian</h2>
                     <p className="text-sm text-muted-foreground">Kelola pencatatan kematian penduduk.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                        <SelectTrigger className="w-[130px] bg-white">
-                            <SelectValue placeholder="Tahun" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Semua Tahun</SelectItem>
-                            {availableYears.map(year => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="flex flex-col gap-3 w-full xl:w-auto">
+                    <div className="grid grid-cols-2 gap-2 w-full">
+                        <Select value={selectedYear} onValueChange={setSelectedYear}>
+                            <SelectTrigger className="bg-white w-full">
+                                <SelectValue placeholder="Tahun" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Semua Tahun</SelectItem>
+                                {availableYears.map(year => (
+                                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
-                    <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Cari..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Select value={selectedDeret} onValueChange={setSelectedDeret}>
+                            <SelectTrigger className="bg-white w-full">
+                                <SelectValue placeholder="Deret" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Semua Deret</SelectItem>
+                                {uniqueDeretList.map(d => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <ExcelActions data={dataList} fileName="Data_Akta_Kematian" onImport={handleImport} isLoading={loading} />
-                    <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100">
-                        <FileDown className="h-4 w-4" /> PDF
-                    </Button>
-                    <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-slate-800 hover:bg-slate-900">
-                        {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        {showForm ? "Batal" : "Tambah Data"}
-                    </Button>
+
+                    <div className="flex flex-col md:flex-row gap-2 w-full">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Cari..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-2 sm:flex gap-2">
+                            <ExcelActions data={dataList} fileName="Data_Akta_Kematian" onImport={handleImport} isLoading={loading} />
+                            <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100">
+                                <FileDown className="h-4 w-4" /> PDF
+                            </Button>
+                            <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-slate-800 hover:bg-slate-900 col-span-2 sm:col-span-1 text-white">
+                                {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                {showForm ? "Batal" : "Tambah"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -382,6 +430,35 @@ export function AktaKematianForm() {
                             </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="keterangan">Keterangan</Label>
+                                <Input
+                                    id="keterangan"
+                                    list="ket-list"
+                                    value={formData.keterangan}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: AKEM 22"
+                                />
+                                <datalist id="ket-list">
+                                    {suggestions.keterangan.map((item, i) => <option key={i} value={item} />)}
+                                </datalist>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="deret">Deret</Label>
+                                <Input
+                                    id="deret"
+                                    list="deret-list"
+                                    value={formData.deret}
+                                    onChange={handleChange}
+                                    placeholder="Contoh: 4"
+                                />
+                                <datalist id="deret-list">
+                                    {suggestions.deret.map((item, i) => <option key={i} value={item} />)}
+                                </datalist>
+                            </div>
+                        </div>
+
                         <ImageUploadCapture
                             label="Foto Dokumen Akta (Opsional)"
                             currentImage={currentImage}
@@ -412,14 +489,15 @@ export function AktaKematianForm() {
                                     <th className="p-3 font-medium">No. Surat</th>
                                     <th className="p-3 font-medium">Nama</th>
                                     <th className="p-3 font-medium">Tgl Meninggal</th>
-                                    <th className="p-3 font-medium">Lahir</th>
+                                    <th className="p-3 font-medium">Deret</th>
+                                    <th className="p-3 font-medium">Keterangan</th>
                                     <th className="p-3 font-medium text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {isFetching ? (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
                                                 <p>Memuat data...</p>
@@ -427,7 +505,7 @@ export function AktaKematianForm() {
                                         </td>
                                     </tr>
                                 ) : filteredData.length === 0 ? (
-                                    <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>
+                                    <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>
                                 ) : (
                                     filteredData.map((item) => (
                                         <tr key={item.id} className="border-b hover:bg-muted/50">
@@ -436,9 +514,8 @@ export function AktaKematianForm() {
                                             <td className="p-3">
                                                 {new Date(item.tanggal_meninggal).toLocaleDateString("id-ID")}
                                             </td>
-                                            <td className="p-3 text-muted-foreground">
-                                                {item.tempat_lahir}, {new Date(item.tanggal_lahir).toLocaleDateString("id-ID")}
-                                            </td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center space-x-2">
                                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setViewItem(item)}>
                                                     <Eye className="h-4 w-4" />
