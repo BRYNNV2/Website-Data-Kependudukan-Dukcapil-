@@ -100,7 +100,7 @@ Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan d
 
 ## 🤝 Kontribusi
 
-Project ini dikembangkan untuk tujuan magang/praktik kerja lapangan. Saran dan masukan sangat diapresiasi!
+Project ini dikembangkan untuk tujuan magang/praktik kerja lapangan oleh Muhammad Febri Yansah Mahasiswa Universitas Maritim Raja Ali Haji. Saran dan masukan sangat diapresiasi!
 
 ---
 2026 © SI-PENDUDUK Dukcapil.
