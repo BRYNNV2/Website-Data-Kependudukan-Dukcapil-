@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, CheckCircle, MapPin, Heart, HeartCrack, BookX } from "lucide-react"
+import { Users, FileText, CheckCircle, Heart, HeartCrack, BookX, HardDrive, CreditCard } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { id } from "date-fns/locale"
@@ -16,9 +16,58 @@ import {
     PieChart,
     Pie,
     Cell,
+    BarChart,
+    Bar,
 } from "recharts"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 import { PopulationMap } from "@/components/PopulationMap"
+
+interface CompletenessStat {
+    category: string
+    total: number
+    completed: number
+    percentage: number
+    color: string
+    bgColor: string
+    icon: any
+}
+
+function CompletenessItem({ stat }: { stat: CompletenessStat }) {
+    const [width, setWidth] = useState(0)
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setWidth(stat.percentage)
+        }, 100)
+        return () => clearTimeout(timer)
+    }, [stat.percentage])
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                    <stat.icon className={`h-4 w-4 ${stat.color.replace('bg-', 'text-')}`} />
+                    <span className="font-medium text-slate-700">{stat.category}</span>
+                </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${stat.bgColor} ${stat.color.replace('bg-', 'text-')}`}>
+                    {stat.percentage}%
+                </span>
+            </div>
+            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div
+                    className={`h-full ${stat.color} rounded-full transition-all duration-1000 ease-out`}
+                    style={{ width: `${width}%` }}
+                />
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{stat.completed} file terupload</span>
+                <span>Total: {stat.total}</span>
+            </div>
+        </div>
+    )
+}
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -29,80 +78,199 @@ export default function Dashboard() {
         totalAktaPerceraian: 0,
         totalAktaKematian: 0
     })
-    const [topRegions, setTopRegions] = useState<{ name: string, count: number }[]>([])
+
     const [inputHistory, setInputHistory] = useState<any[]>([])
+    const [completenessStats, setCompletenessStats] = useState<CompletenessStat[]>([])
     const [loading, setLoading] = useState(true)
+    const [selectedStatCategory, setSelectedStatCategory] = useState("akta_perceraian")
+    const [annualStats, setAnnualStats] = useState<{ year: string, count: number }[]>([])
+
+
+    // Color map for charts
+    const categoryColors: Record<string, string> = {
+        akta_perceraian: "#E91E63", // Pink/Purple
+        akta_perkawinan: "#D81B60", // Pink
+        akta_kelahiran: "#F59E0B", // Orange
+        akta_kematian: "#475569", // Slate
+        penduduk: "#2563EB", // Blue
+        kartu_keluarga: "#16A34A" // Green
+    }
+
 
     useEffect(() => {
         fetchDashboardData()
     }, [])
 
-    const fetchDashboardData = async () => {
+
+    useEffect(() => {
+        fetchAnnualStats()
+    }, [selectedStatCategory])
+
+    const fetchAnnualStats = async () => {
+        let tableName = selectedStatCategory
+        let dateCol = 'created_at'
+
+        switch (selectedStatCategory) {
+            case 'akta_perceraian': dateCol = 'tanggal_terbit'; break;
+            case 'akta_perkawinan': dateCol = 'tanggal_terbit'; break;
+            case 'akta_kelahiran': dateCol = 'tanggal_lahir'; break;
+            case 'akta_kematian': dateCol = 'tanggal_meninggal'; break;
+            case 'penduduk': dateCol = 'created_at'; break; // Penduduk usually doesn't have a single 'event date' other than birth, but 'created_at' implies input time
+            case 'kartu_keluarga': dateCol = 'tanggal_dikeluarkan'; break;
+            default: dateCol = 'created_at';
+        }
+
+        try {
+            const { data } = await supabase.from(tableName).select(dateCol)
+
+            if (data) {
+                const yearCounts: Record<string, number> = {}
+                data.forEach((item: any) => {
+                    const dateVal = item[dateCol]
+                    if (dateVal) {
+                        const year = new Date(dateVal).getFullYear().toString()
+                        yearCounts[year] = (yearCounts[year] || 0) + 1
+                    }
+                })
+
+                // Fill range if needed, or just sort
+                const sorted = Object.entries(yearCounts)
+                    .map(([year, count]) => ({ year, count }))
+                    .sort((a, b) => a.year.localeCompare(b.year))
+
+                setAnnualStats(sorted)
+            }
+        } catch (error) {
+            console.error("Error fetching annual stats:", error)
+        }
+    }
+
+    async function fetchDashboardData() {
         setLoading(true)
         try {
-            // Fetch Counts
-            const { count: countPenduduk } = await supabase.from("penduduk").select("*", { count: 'exact', head: true })
-            const { count: countKK } = await supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true })
-            const { count: countAkta } = await supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true })
-            const { count: countAktaPerkawinan } = await supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true })
-            const { count: countAktaPerceraian } = await supabase.from("akta_perceraian").select("*", { count: 'exact', head: true })
-            const { count: countAktaKematian } = await supabase.from("akta_kematian").select("*", { count: 'exact', head: true })
+            const today = new Date()
+            const sevenDaysAgo = subDays(startOfDay(today), 6).toISOString()
+            const endToday = endOfDay(today).toISOString()
+
+            // Define all promises
+            // 1. Totals
+            const pTotalPenduduk = supabase.from("penduduk").select("*", { count: 'exact', head: true })
+            const pTotalKK = supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true })
+            const pTotalAkta = supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true })
+            const pTotalAktaPerkawinan = supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true })
+            const pTotalAktaPerceraian = supabase.from("akta_perceraian").select("*", { count: 'exact', head: true })
+            const pTotalAktaKematian = supabase.from("akta_kematian").select("*", { count: 'exact', head: true })
+
+            // 2. Completed Counts (Not Null)
+            // Note: verified column names, standard is foto_dokumen
+            const pCompletedKK = supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null)
+            const pCompletedAkta = supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null)
+            const pCompletedAktaPerkawinan = supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null)
+            const pCompletedAktaPerceraian = supabase.from("akta_perceraian").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null)
+            const pCompletedAktaKematian = supabase.from("akta_kematian").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null)
+
+
+            // 3. History (Get created_at for last 7 days)
+            // Selecting only created_at is minimal.
+            const pHistoryPenduduk = supabase.from("penduduk").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+            const pHistoryKK = supabase.from("kartu_keluarga").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+            const pHistoryAkta = supabase.from("akta_kelahiran").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+            const pHistoryAktaPerkawinanRaw = supabase.from("akta_perkawinan").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+            const pHistoryAktaPerceraian = supabase.from("akta_perceraian").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+            const pHistoryAktaKematian = supabase.from("akta_kematian").select("created_at").gte('created_at', sevenDaysAgo).lte('created_at', endToday)
+
+
+            // EXECUTE ALL IN PARALLEL
+            const [
+                resTotalPenduduk, resTotalKK, resTotalAkta, resTotalAktaPerkawinan, resTotalAktaPerceraian, resTotalAktaKematian,
+                resCompletedPenduduk, resCompletedKK, resCompletedAkta, resCompletedAktaPerkawinan, resCompletedAktaPerceraian, resCompletedAktaKematian,
+                resHistPenduduk, resHistKK, resHistAkta, resHistAktaPerkawinan, resHistAktaPerceraian, resHistAktaKematian
+            ] = await Promise.all([
+                pTotalPenduduk, pTotalKK, pTotalAkta, pTotalAktaPerkawinan, pTotalAktaPerceraian, pTotalAktaKematian,
+                // For Penduduk completion
+                supabase.from("penduduk").select("*", { count: 'exact', head: true }).not('foto_dokumen', 'is', null),
+                pCompletedKK, pCompletedAkta, pCompletedAktaPerkawinan, pCompletedAktaPerceraian, pCompletedAktaKematian,
+                pHistoryPenduduk, pHistoryKK, pHistoryAkta, pHistoryAktaPerkawinanRaw, pHistoryAktaPerceraian, pHistoryAktaKematian
+            ])
+
+            // SET STATS
+            const totalPenduduk = resTotalPenduduk.count || 0
+            const totalKK = resTotalKK.count || 0
+            const totalAkta = resTotalAkta.count || 0
+            const totalAktaPerkawinan = resTotalAktaPerkawinan.count || 0
+            const totalAktaPerceraian = resTotalAktaPerceraian.count || 0
+            const totalAktaKematian = resTotalAktaKematian.count || 0
 
             setStats({
-                totalPenduduk: countPenduduk || 0,
-                totalKK: countKK || 0,
-                totalAkta: countAkta || 0,
-                totalAktaPerkawinan: countAktaPerkawinan || 0,
-                totalAktaPerceraian: countAktaPerceraian || 0,
-                totalAktaKematian: countAktaKematian || 0
+                totalPenduduk,
+                totalKK,
+                totalAkta,
+                totalAktaPerkawinan,
+                totalAktaPerceraian,
+                totalAktaKematian
             })
 
-            // Fetch Input History (Last 7 Days)
-            const today = new Date()
-            const historyData = []
+            // PROCESS HISTORY
+            const historyMap: Record<string, number> = {}
+            // init last 7 days with 0
+            for (let i = 0; i < 7; i++) {
+                const dayStr = format(subDays(today, i), "d MMM", { locale: id })
+                historyMap[dayStr] = 0
+            }
 
+            const addToHistory = (data: any[] | null) => {
+                data?.forEach(item => {
+                    // Item could be { created_at: ... }
+                    const dateVal = item.created_at
+                    if (dateVal) {
+                        const dayStr = format(new Date(dateVal), "d MMM", { locale: id })
+                        if (historyMap.hasOwnProperty(dayStr)) {
+                            historyMap[dayStr]++
+                        }
+                    }
+                })
+            }
+
+            addToHistory(resHistPenduduk.data)
+            addToHistory(resHistKK.data)
+            addToHistory(resHistAkta.data)
+            addToHistory(resHistAktaPerkawinan.data)
+            addToHistory(resHistAktaPerceraian.data)
+            addToHistory(resHistAktaKematian.data)
+
+            // Convert map to array
+            const historyArr = []
             for (let i = 6; i >= 0; i--) {
-                const date = subDays(today, i)
-                const start = startOfDay(date).toISOString()
-                const end = endOfDay(date).toISOString()
-
-                // Fetch counts for each day from all tables (approximate input activity)
-                // Note: Fetching simple counts for performance. 
-                // In a huge app, you'd have an analytics table.
-                const { count: pCount } = await supabase.from("penduduk").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-                const { count: kCount } = await supabase.from("kartu_keluarga").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-                const { count: aCount } = await supabase.from("akta_kelahiran").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-                const { count: apCount } = await supabase.from("akta_perkawinan").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-                const { count: acCount } = await supabase.from("akta_perceraian").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-                const { count: akCount } = await supabase.from("akta_kematian").select("*", { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end)
-
-                historyData.push({
-                    date: format(date, "d MMM", { locale: id }),
-                    count: (pCount || 0) + (kCount || 0) + (aCount || 0) + (apCount || 0) + (acCount || 0) + (akCount || 0)
+                const dayStr = format(subDays(today, i), "d MMM", { locale: id })
+                historyArr.push({
+                    date: dayStr,
+                    count: historyMap[dayStr] || 0
                 })
             }
-            setInputHistory(historyData)
+            setInputHistory(historyArr)
 
+            // PROCESS COMPLETENESS
+            // config reusing totals
+            const completenessData = [
+                { label: 'KTP Elektronik', total: totalPenduduk, completed: resCompletedPenduduk.count || 0, color: 'bg-blue-600', bg: 'bg-blue-100', icon: CreditCard },
+                { label: 'Kartu Keluarga', total: totalKK, completed: resCompletedKK.count || 0, color: 'bg-green-600', bg: 'bg-green-100', icon: FileText },
+                { label: 'Akta Kelahiran', total: totalAkta, completed: resCompletedAkta.count || 0, color: 'bg-orange-600', bg: 'bg-orange-100', icon: CheckCircle },
+                { label: 'Akta Perkawinan', total: totalAktaPerkawinan, completed: resCompletedAktaPerkawinan.count || 0, color: 'bg-pink-600', bg: 'bg-pink-100', icon: Heart },
+                { label: 'Akta Perceraian', total: totalAktaPerceraian, completed: resCompletedAktaPerceraian.count || 0, color: 'bg-purple-600', bg: 'bg-purple-100', icon: HeartCrack },
+                { label: 'Akta Kematian', total: totalAktaKematian, completed: resCompletedAktaKematian.count || 0, color: 'bg-slate-600', bg: 'bg-slate-100', icon: BookX },
+            ]
 
-            // Fetch Top Regions
-            const { data: kkData } = await supabase.from('kartu_keluarga').select('rt, rw')
-            if (kkData) {
-                const regionCounts: Record<string, number> = {}
-                kkData.forEach(item => {
-                    // Normalize RT/RW
-                    const rt = item.rt ? item.rt.toString().replace(/^0+/, '') : '?'
-                    const rw = item.rw ? item.rw.toString().replace(/^0+/, '') : '?'
-                    const region = `RT ${rt} / RW ${rw}`
-                    regionCounts[region] = (regionCounts[region] || 0) + 1
-                })
+            const completenessStatsFormatted = completenessData.map(item => ({
+                category: item.label,
+                total: item.total,
+                completed: item.completed,
+                percentage: item.total ? Math.round((item.completed / item.total) * 100) : 0,
+                color: item.color,
+                bgColor: item.bg,
+                icon: item.icon
+            }))
 
-                const sorted = Object.entries(regionCounts)
-                    .sort(([, a], [, b]) => b - a)
-                    .slice(0, 5)
-                    .map(([name, count]) => ({ name, count }))
-
-                setTopRegions(sorted)
-            }
+            setCompletenessStats(completenessStatsFormatted)
 
         } catch (error) {
             console.error("Error fetching dashboard data:", error)
@@ -130,8 +298,6 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-800">Dashboard</h2>
-
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <StatCard
@@ -177,6 +343,77 @@ export default function Dashboard() {
                     subtitle="Data Kematian"
                 />
             </div>
+
+            {/* Storage Insight - Status Kelengkapan Berkas */}
+            <Card className="border-slate-200 shadow-sm col-span-full">
+                <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-slate-800">
+                        <HardDrive className="h-5 w-5 text-indigo-600" />
+                        Status Kelengkapan Berkas Digital (Storage Insight)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {loading ? (
+                            <div className="col-span-full text-center py-4 text-muted-foreground">Memuat data kelengkapan...</div>
+                        ) : (
+                            completenessStats.map((stat, index) => (
+                                <CompletenessItem key={index} stat={stat} />
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Annual Statistics Section */}
+            <Card className="col-span-full">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle>Statistik Data Tahunan</CardTitle>
+                    <div className="w-[200px]">
+                        <Select value={selectedStatCategory} onValueChange={setSelectedStatCategory}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih Kategori" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="akta_perceraian">Akta Perceraian</SelectItem>
+                                <SelectItem value="akta_perkawinan">Akta Perkawinan</SelectItem>
+                                <SelectItem value="akta_kematian">Akta Kematian</SelectItem>
+                                <SelectItem value="akta_kelahiran">Akta Kelahiran</SelectItem>
+                                <SelectItem value="kartu_keluarga">Kartu Keluarga</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-[350px] w-full">
+                        {annualStats.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={annualStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                                    <YAxis allowDecimals={false} />
+                                    <Tooltip
+                                        cursor={{ fill: 'transparent' }}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Bar
+                                        dataKey="count"
+                                        name="Jumlah Data"
+                                        fill={categoryColors[selectedStatCategory] || "#8884d8"}
+                                        radius={[4, 4, 0, 0]}
+                                        barSize={40}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
+                                <BookX className="h-8 w-8 opacity-20" />
+                                <p>Belum ada data statistik untuk kategori ini.</p>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Charts Section */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -273,59 +510,8 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                {/* Top 5 Wilayah */}
-                <div className="col-span-4">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <MapPin className="h-5 w-5 text-red-500" />
-                                Top 5 Sebaran Wilayah (RT/RW)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {loading ? (
-                                    <div className="text-center py-4 text-muted-foreground">Memuat data...</div>
-                                ) : topRegions.length === 0 ? (
-                                    <div className="text-center py-4 text-muted-foreground">Belum ada data wilayah.</div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {topRegions.map((region, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-lg border">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${index === 0 ? 'bg-amber-100 text-amber-700' :
-                                                        index === 1 ? 'bg-slate-200 text-slate-700' :
-                                                            index === 2 ? 'bg-orange-100 text-orange-800' :
-                                                                'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        #{index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-sm">{region.name}</p>
-                                                        <div className="bg-gray-200 rounded-full h-1.5 mt-1.5 w-32 relative overflow-hidden">
-                                                            <div
-                                                                className="bg-blue-600 h-1.5 rounded-full"
-                                                                style={{ width: `${(region.count / topRegions[0].count) * 100}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-lg font-bold text-gray-800">{region.count}</span>
-                                                    <p className="text-xs text-muted-foreground">KK Data</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                <div className="col-span-3">
-                    <PopulationMap />
-                </div>
+            <div>
+                <PopulationMap />
             </div>
         </div>
     )

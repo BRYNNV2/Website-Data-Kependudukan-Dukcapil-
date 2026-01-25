@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -73,6 +74,7 @@ export function KTPForm() {
         const { data, error } = await supabase
             .from("penduduk")
             .select("*")
+            .eq("is_deleted", false)
             .order("created_at", { ascending: false })
 
         if (!error && data) {
@@ -188,12 +190,12 @@ export function KTPForm() {
 
         const item = dataList.find(d => d.id === deleteId)
 
-        const { error } = await supabase.from("penduduk").delete().eq("id", deleteId)
+        const { error } = await supabase.from("penduduk").update({ is_deleted: true }).eq("id", deleteId)
         if (!error) {
             if (item) {
-                await logActivity("HAPUS DATA KTP", `Menghapus KTP NIK: ${item.nik} (${item.nama_lengkap})`)
+                await logActivity("HAPUS DATA KTP", `Memindahkan KTP NIK: ${item.nik} ke Sampah`)
             }
-            toast.success("Data berhasil dihapus")
+            toast.success("Data dipindahkan ke Sampah")
             fetchData()
         } else {
             toast.error("Gagal menghapus: " + error.message)
@@ -208,6 +210,37 @@ export function KTPForm() {
     const formatDate = (dateStr: string) => {
         if (!dateStr) return "-"
         return new Date(dateStr).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+    }
+
+    const handleImport = async (importedData: any[]) => {
+        setLoading(true)
+        try {
+            const validData = importedData.map(item => ({
+                nik: String(item['NIK'] || item['nik'] || ''),
+                nama_lengkap: item['Nama Lengkap'] || item['nama_lengkap'] || item['Nama'] || '',
+                tempat_lahir: item['Tempat Lahir'] || item['tempat_lahir'] || '',
+                tgl_lahir: item['Tanggal Lahir'] || item['tgl_lahir'] || null,
+                pekerjaan: item['Pekerjaan'] || item['pekerjaan'] || '',
+            })).filter(item => item.nik && item.nama_lengkap && item.nik.length === 16)
+
+            if (validData.length === 0) {
+                toast.error("Data tidak valid. Pastikan kolom NIK (16 digit), Nama Lengkap, dll benar.")
+                setLoading(false)
+                return
+            }
+
+            const { error } = await supabase.from('penduduk').upsert(validData, { onConflict: 'nik' })
+
+            if (error) throw error
+
+            await logActivity("IMPORT DATA KTP", `Mengimport ${validData.length} data via Excel`)
+            toast.success(`Berhasil mengimport ${validData.length} data`)
+            fetchData()
+        } catch (error: any) {
+            toast.error("Gagal import: " + error.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleDownloadPDF = () => {
@@ -313,6 +346,7 @@ export function KTPForm() {
                     <p className="text-sm text-muted-foreground">Kelola data KTP Elektronik</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <ExcelActions data={dataList} fileName="Data_KTP" onImport={handleImport} isLoading={loading} />
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input

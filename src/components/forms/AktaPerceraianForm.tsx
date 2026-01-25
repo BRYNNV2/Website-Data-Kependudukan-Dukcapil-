@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
+import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -97,6 +98,7 @@ export function AktaPerceraianForm() {
         const { data, error } = await supabase
             .from("akta_perceraian")
             .select("*")
+            .eq("is_deleted", false)
             .order("created_at", { ascending: false })
 
         if (!error && data) {
@@ -204,15 +206,46 @@ export function AktaPerceraianForm() {
         if (!deleteId) return
         const item = dataList.find(d => d.id === deleteId)
 
-        const { error } = await supabase.from("akta_perceraian").delete().eq("id", deleteId)
+        const { error } = await supabase.from("akta_perceraian").update({ is_deleted: true }).eq("id", deleteId)
         if (!error) {
-            if (item) await logActivity("HAPUS AKTA PERCERAIAN", `Hapus No. ${item.no_akta}`)
-            toast.success("Data berhasil dihapus")
+            if (item) await logActivity("HAPUS AKTA PERCERAIAN", `Memindahkan No. ${item.no_akta} ke Sampah`)
+            toast.success("Data dipindahkan ke Sampah")
             fetchData()
         } else {
             toast.error("Gagal menghapus: " + error.message)
         }
         setDeleteId(null)
+    }
+
+    const handleImport = async (importedData: any[]) => {
+        setLoading(true)
+        try {
+            const validData = importedData.map(item => ({
+                no_akta: String(item['No. Akta'] || item['no_akta'] || item['No Akta'] || ''),
+                nama_suami: item['Nama Suami'] || item['nama_suami'] || '',
+                nama_istri: item['Nama Istri'] || item['nama_istri'] || '',
+                tanggal_terbit: item['Tanggal Terbit'] || item['tanggal_terbit'] || null,
+                keterangan: item['Keterangan'] || item['keterangan'] || '',
+                deret: item['Deret'] || item['deret'] || ''
+            })).filter(item => item.nama_suami && item.nama_istri)
+
+            if (validData.length === 0) {
+                toast.error("Data valid tidak ditemukan")
+                setLoading(false)
+                return
+            }
+
+            const { error } = await supabase.from('akta_perceraian').upsert(validData, { onConflict: 'no_akta' })
+            if (error) throw error
+
+            await logActivity("IMPORT DATA PERCERAIAN", `Import ${validData.length} data`)
+            toast.success(`Import berhasil: ${validData.length} data`)
+            fetchData()
+        } catch (err: any) {
+            toast.error("Import gagal: " + err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleDownloadPDF = () => {
@@ -330,6 +363,7 @@ export function AktaPerceraianForm() {
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Cari..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
+                    <ExcelActions data={dataList} fileName="Data_Akta_Perceraian" onImport={handleImport} isLoading={loading} />
                     <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100">
                         <FileDown className="h-4 w-4" /> PDF
                     </Button>

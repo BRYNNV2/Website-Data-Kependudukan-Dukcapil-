@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, FileSpreadsheet, Upload, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, AlertTriangle } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-import * as XLSX from "xlsx"
+import { ExcelActions } from "@/components/ExcelActions"
 import { logActivity } from "@/lib/logger"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -40,6 +40,7 @@ interface KKData {
     latitude?: number
     longitude?: number
     foto_dokumen?: string
+    tanggal_dikeluarkan?: string
     created_at: string
 }
 
@@ -57,13 +58,13 @@ export function KKForm() {
         rt: "",
         rw: "",
         latitude: "",
-        longitude: ""
+        longitude: "",
+        tanggal_dikeluarkan: ""
     })
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [viewItem, setViewItem] = useState<KKData | null>(null)
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const filteredData = dataList.filter(item =>
         item.no_kk.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,6 +81,7 @@ export function KKForm() {
         const { data, error } = await supabase
             .from("kartu_keluarga")
             .select("*")
+            .eq("is_deleted", false)
             .order("created_at", { ascending: false })
 
         if (!error && data) {
@@ -94,7 +96,7 @@ export function KKForm() {
 
     const handleSubmit = async () => {
         // Validation
-        if (!formData.no_kk || !formData.kepala_keluarga || !formData.alamat || !formData.rt || !formData.rw) {
+        if (!formData.no_kk || !formData.kepala_keluarga || !formData.alamat || !formData.rt || !formData.rw || !formData.tanggal_dikeluarkan) {
             toast.error("Semua field harus diisi!")
             return
         }
@@ -139,7 +141,8 @@ export function KKForm() {
                     rw: formData.rw,
                     latitude: formData.latitude ? parseFloat(formData.latitude) : null,
                     longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan
                 }).eq("id", editId)
 
                 if (error) throw error
@@ -155,7 +158,8 @@ export function KKForm() {
                     rw: formData.rw,
                     latitude: formData.latitude ? parseFloat(formData.latitude) : null,
                     longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-                    foto_dokumen: photoUrl
+                    foto_dokumen: photoUrl,
+                    tanggal_dikeluarkan: formData.tanggal_dikeluarkan
                 })
 
                 if (error) throw error
@@ -180,7 +184,8 @@ export function KKForm() {
             rt: "",
             rw: "",
             latitude: "",
-            longitude: ""
+            longitude: "",
+            tanggal_dikeluarkan: ""
         })
         setSelectedFile(null)
         setCurrentImage(null)
@@ -200,7 +205,8 @@ export function KKForm() {
             rt: item.rt,
             rw: item.rw,
             latitude: item.latitude?.toString() || "",
-            longitude: item.longitude?.toString() || ""
+            longitude: item.longitude?.toString() || "",
+            tanggal_dikeluarkan: item.tanggal_dikeluarkan || ""
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
@@ -215,12 +221,12 @@ export function KKForm() {
 
         const itemToDelete = dataList.find(d => d.id === deleteId)
 
-        const { error } = await supabase.from("kartu_keluarga").delete().eq("id", deleteId)
+        const { error } = await supabase.from("kartu_keluarga").update({ is_deleted: true }).eq("id", deleteId)
         if (!error) {
             if (itemToDelete) {
-                await logActivity("HAPUS DATA KK", `Menghapus KK No. ${itemToDelete.no_kk} (${itemToDelete.kepala_keluarga})`)
+                await logActivity("HAPUS DATA KK", `Memindahkan KK No. ${itemToDelete.no_kk} ke Sampah`)
             }
-            toast.success("Data berhasil dihapus")
+            toast.success("Data dipindahkan ke Sampah")
             fetchData()
         } else {
             toast.error("Gagal menghapus: " + error.message)
@@ -244,11 +250,12 @@ export function KKForm() {
             item.no_kk,
             item.kepala_keluarga,
             item.alamat,
-            `${item.rt}/${item.rw}`
+            `${item.rt}/${item.rw}`,
+            item.tanggal_dikeluarkan || '-'
         ])
 
         autoTable(doc, {
-            head: [['No', 'No. KK', 'Kepala Keluarga', 'Alamat', 'RT/RW']],
+            head: [['No', 'No. KK', 'Kepala Keluarga', 'Alamat', 'RT/RW', 'Tgl Dikeluarkan']],
             body: tableData,
             startY: 25,
             theme: 'grid',
@@ -259,64 +266,37 @@ export function KKForm() {
         doc.save(`Laporan_KK_${new Date().getTime()}.pdf`)
     }
 
-    const handleExportExcel = () => {
-        const exportData = filteredData.map(item => ({
-            "No. KK": item.no_kk,
-            "Kepala Keluarga": item.kepala_keluarga,
-            "Alamat": item.alamat,
-            "RT": item.rt,
-            "RW": item.rw,
-            "Latitude": item.latitude,
-            "Longitude": item.longitude
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Data KK");
-        XLSX.writeFile(workbook, `Data_KK_${new Date().getTime()}.xlsx`);
-    }
-
-    const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
-            const data = XLSX.utils.sheet_to_json(ws);
-
-            const importedData = data.map((row: any) => ({
+    const handleImport = async (importedData: any[]) => {
+        setLoading(true)
+        try {
+            const validData = importedData.map((row: any) => ({
                 no_kk: (row["No. KK"] || row["no_kk"] || "").toString(),
-                kepala_keluarga: row["Kepala Keluarga"] || row["kepala_keluarga"],
-                alamat: row["Alamat"] || row["alamat"],
+                kepala_keluarga: row["Kepala Keluarga"] || row["kepala_keluarga"] || "",
+                alamat: row["Alamat"] || row["alamat"] || "",
                 rt: (row["RT"] || row["rt"] || "").toString(),
                 rw: (row["RW"] || row["rw"] || "").toString(),
-                latitude: row["Latitude"] || row["latitude"] || null,
-                longitude: row["Longitude"] || row["longitude"] || null
-            })).filter((item: any) => item.no_kk && item.kepala_keluarga);
+                tanggal_dikeluarkan: row["Tanggal Dikeluarkan"] || row["tanggal_dikeluarkan"] || null,
+                latitude: parseFloat(row["Latitude"] || row["latitude"] || "0"),
+                longitude: parseFloat(row["Longitude"] || row["longitude"] || "0")
+            })).filter((item: any) => item.no_kk && item.kepala_keluarga)
 
-            if (importedData.length === 0) {
-                toast.error("Tidak ada data valid yang ditemukan.");
-                return;
+            if (validData.length === 0) {
+                toast.error("Data tidak valid or kosong")
+                setLoading(false)
+                return
             }
 
-            setLoading(true);
-            try {
-                const { error } = await supabase.from('kartu_keluarga').insert(importedData);
-                if (error) throw error;
-                toast.success(`${importedData.length} data berhasil diimport!`);
-                fetchData();
-            } catch (err: any) {
-                toast.error("Gagal import: " + err.message);
-            } finally {
-                setLoading(false);
-                if (e.target) e.target.value = "";
-            }
-        };
-        reader.readAsBinaryString(file);
+            const { error } = await supabase.from('kartu_keluarga').upsert(validData, { onConflict: 'no_kk' })
+            if (error) throw error
+
+            await logActivity("IMPORT DATA KK", `Import ${validData.length} data via Excel`)
+            toast.success("Import berhasil")
+            fetchData()
+        } catch (err: any) {
+            toast.error("Gagal import: " + err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -345,6 +325,9 @@ export function KKForm() {
 
                                     <span className="font-semibold">RT/RW</span>
                                     <span className="col-span-2">: {viewItem.rt} / {viewItem.rw}</span>
+
+                                    <span className="font-semibold">Tanggal Dikeluarkan</span>
+                                    <span className="col-span-2">: {viewItem.tanggal_dikeluarkan || "-"}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -413,21 +396,7 @@ export function KKForm() {
                         />
                     </div>
                     <div className="flex gap-2">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImportExcel}
-                            accept=".xlsx, .xls"
-                            className="hidden"
-                        />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2 bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200" title="Import data dari Excel">
-                            <Upload className="h-4 w-4" />
-                            Import
-                        </Button>
-                        <Button variant="outline" onClick={handleExportExcel} className="gap-2 bg-green-50 text-green-700 hover:bg-green-100 border-green-200" title="Export data ke Excel">
-                            <FileSpreadsheet className="h-4 w-4" />
-                            Excel
-                        </Button>
+                        <ExcelActions data={dataList} fileName="Data_Kartu_Keluarga" onImport={handleImport} isLoading={loading} />
                         <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4" />
                             PDF
@@ -478,6 +447,17 @@ export function KKForm() {
                                 <Input id="rw" value={formData.rw} onChange={handleChange} placeholder="001" />
                             </div>
                         </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="tanggal_dikeluarkan">Tanggal Dikeluarkan</Label>
+                            <Input
+                                id="tanggal_dikeluarkan"
+                                type="date"
+                                value={formData.tanggal_dikeluarkan}
+                                onChange={handleChange}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="latitude">Latitude (Koordinat)</Label>
@@ -542,6 +522,7 @@ export function KKForm() {
                                         <th className="text-left p-3 font-medium">Kepala Keluarga</th>
                                         <th className="text-left p-3 font-medium">Alamat</th>
                                         <th className="text-left p-3 font-medium">RT/RW</th>
+                                        <th className="text-left p-3 font-medium">Tgl Dikeluarkan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
@@ -552,6 +533,7 @@ export function KKForm() {
                                             <td className="p-3">{item.kepala_keluarga}</td>
                                             <td className="p-3 text-muted-foreground">{item.alamat || "-"}</td>
                                             <td className="p-3">{item.rt || "-"}/{item.rw || "-"}</td>
+                                            <td className="p-3">{item.tanggal_dikeluarkan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"

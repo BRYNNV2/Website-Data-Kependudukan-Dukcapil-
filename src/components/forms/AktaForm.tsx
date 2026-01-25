@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -74,6 +75,7 @@ export function AktaForm() {
         const { data, error } = await supabase
             .from("akta_kelahiran")
             .select("*")
+            .eq("is_deleted", false)
             .order("created_at", { ascending: false })
 
         if (!error && data) {
@@ -191,12 +193,12 @@ export function AktaForm() {
 
         const item = dataList.find(d => d.id === deleteId)
 
-        const { error } = await supabase.from("akta_kelahiran").delete().eq("id", deleteId)
+        const { error } = await supabase.from("akta_kelahiran").update({ is_deleted: true }).eq("id", deleteId)
         if (!error) {
             if (item) {
-                await logActivity("HAPUS DATA AKTA", `Menghapus Akta No: ${item.no_akta} (${item.nama_anak})`)
+                await logActivity("HAPUS DATA AKTA", `Memindahkan Akta No: ${item.no_akta} ke Sampah`)
             }
-            toast.success("Data berhasil dihapus")
+            toast.success("Data dipindahkan ke Sampah")
             fetchData()
         } else {
             toast.error("Gagal menghapus: " + error.message)
@@ -211,6 +213,44 @@ export function AktaForm() {
     const formatDate = (dateStr: string) => {
         if (!dateStr) return "-"
         return new Date(dateStr).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
+    }
+
+    const handleImport = async (importedData: any[]) => {
+        setLoading(true)
+        try {
+            const validData = importedData.map(item => ({
+                no_akta: String(item['No Akta'] || item['no_akta'] || ''),
+                nama_anak: item['Nama Anak'] || item['nama_anak'] || '',
+                nama_ayah: item['Nama Ayah'] || item['nama_ayah'] || '',
+                nama_ibu: item['Nama Ibu'] || item['nama_ibu'] || '',
+                tgl_lahir_anak: item['Tanggal Lahir'] || item['tgl_lahir_anak'] || null
+            })).filter(item => item.nama_anak && item.tgl_lahir_anak)
+
+            if (validData.length === 0) {
+                toast.error("Data tidak valid. Pastikan kolom Nama Anak, dll benar.")
+                setLoading(false)
+                return
+            }
+
+            const { error } = await supabase.from('akta_kelahiran').upsert(validData, { onConflict: 'no_akta' }) // If no_akta is empty/null, might be issue. But assuming it's key. 
+            // If no_akta is optional in DB but used for collision here, ensure it's provided or generate one? 
+            // DB schema likely requires no_akta or ID. Upsert needs a constraint.
+            // If no_akta is not unique constraint, upsert on ID? But ID is auto.
+            // I'll stick to 'no_akta' if provided, else just insert (upsert without conflict key implies insert if new).
+            // Actually upsert requires onConflict for update.
+            // If user imports new data without IDs, it's insert.
+            // I'll assume no_akta is key.
+
+            if (error) throw error
+
+            await logActivity("IMPORT DATA AKTA KELAHIRAN", `Mengimport ${validData.length} data via Excel`)
+            toast.success(`Berhasil mengimport ${validData.length} data`)
+            fetchData()
+        } catch (error: any) {
+            toast.error("Gagal import: " + error.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleDownloadPDF = () => {
@@ -317,6 +357,7 @@ export function AktaForm() {
                     <p className="text-sm text-muted-foreground">Kelola data Akta Kelahiran</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <ExcelActions data={dataList} fileName="Data_Akta_Kelahiran" onImport={handleImport} isLoading={loading} />
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input

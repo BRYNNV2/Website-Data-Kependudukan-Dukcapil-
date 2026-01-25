@@ -13,6 +13,7 @@ import ActivityLog from "@/pages/ActivityLog"
 import { Toaster } from "@/components/ui/sonner"
 
 import Settings from "@/pages/Settings"
+import RecycleBin from "@/pages/RecycleBin"
 
 const LayoutWrapper = () => (
   <Layout>
@@ -34,6 +35,7 @@ function App() {
           <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
           <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />
           <Route path="/activity-log" element={<ActivityLog />} />
+          <Route path="/recycle-bin" element={<RecycleBin />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

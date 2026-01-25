@@ -2,9 +2,11 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX, Trash2 } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
+import { NotificationDropdown } from "./NotificationDropdown"
+import { ProfileDropdown } from "./ProfileDropdown"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -25,36 +27,23 @@ export default function Layout({ children }: LayoutProps) {
     const [inputDataOpen, setInputDataOpen] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+    const [userName, setUserName] = useState("Admin Petugas")
     const location = useLocation()
     const navigate = useNavigate()
 
-    const isActive = (path: string) => location.pathname === path
-    const [userName, setUserName] = useState("Admin Petugas")
-    const [userInitial, setUserInitial] = useState("A")
-
     useEffect(() => {
-        getProfile()
-
-        // Listen for auth changes (like profile updates)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session?.user) {
-                const name = session.user.user_metadata?.full_name || "Admin Petugas"
-                setUserName(name)
-                setUserInitial(name.charAt(0).toUpperCase())
+        const getName = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.user_metadata?.full_name) {
+                setUserName(user.user_metadata.full_name)
             }
-        })
-
-        return () => subscription.unsubscribe()
+        }
+        getName()
     }, [])
 
-    const getProfile = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            const name = user.user_metadata?.full_name || "Admin Petugas"
-            setUserName(name)
-            setUserInitial(name.charAt(0).toUpperCase())
-        }
-    }
+    const isActive = (path: string) => location.pathname === path
+
+
     const isInputDataActive = () => location.pathname.startsWith("/input-data")
 
     // Auto-expand Input Data menu if we're on any input-data page
@@ -138,15 +127,16 @@ export default function Layout({ children }: LayoutProps) {
                 isCollapsed ? "w-20" : "w-64"
             )}>
                 {/* Sidebar Header */}
-                <div className={cn("h-16 flex items-center border-b relative", isCollapsed ? "justify-center px-0" : "px-6")}>
-                    <img src={logoDinas} alt="Logo" className={cn("h-8 w-8 object-contain transition-all", !isCollapsed && "mr-2")} />
-
-                    <span className={cn(
-                        "font-bold text-lg text-primary truncate transition-all duration-300",
-                        isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100"
-                    )}>
-                        SI-PENDUDUK
-                    </span>
+                <div className={cn("h-16 flex items-center border-b border-gray-100 relative bg-white z-20", isCollapsed ? "justify-center px-0" : "px-6")}>
+                    <div className={cn("flex items-center gap-3 transition-all duration-300", isCollapsed ? "justify-center w-full" : "")}>
+                        <img src={logoDinas} alt="Logo" className="h-8 w-8 object-contain" />
+                        <span className={cn(
+                            "font-bold text-lg text-slate-800 tracking-tight whitespace-nowrap overflow-hidden transition-all duration-300",
+                            isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+                        )}>
+                            SI-PENDUDUK
+                        </span>
+                    </div>
 
                     <button
                         className="ml-auto lg:hidden text-muted-foreground hover:text-primary"
@@ -155,9 +145,9 @@ export default function Layout({ children }: LayoutProps) {
                         <X className="h-5 w-5" />
                     </button>
 
-                    {/* Desktop Toggle Button */}
+                    {/* Desktop Toggle Button - Enhanced */}
                     <button
-                        className="absolute -right-3 top-5 bg-white border shadow-md rounded-full p-1.5 text-muted-foreground hover:text-primary hidden lg:flex items-center justify-center z-50"
+                        className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-gray-200 shadow-sm rounded-full p-1.5 text-slate-400 hover:text-indigo-600 hidden lg:flex items-center justify-center z-50 transition-colors"
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
@@ -214,6 +204,7 @@ export default function Layout({ children }: LayoutProps) {
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
                     <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
+                    <NavItem to="/recycle-bin" icon={Trash2} label="Tempat Sampah" />
                     <NavItem to="/settings" icon={Settings} label="Pengaturan" />
                 </div>
 
@@ -234,28 +225,47 @@ export default function Layout({ children }: LayoutProps) {
             {/* Main Content */}
             <main className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
                 {/* Header */}
-                <header className="h-16 bg-white border-b flex items-center px-4 lg:px-8 justify-between sticky top-0 z-20">
+                <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200/60 flex items-center px-4 lg:px-8 justify-between sticky top-0 z-40 transition-all">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+                        <Button variant="ghost" size="icon" className="lg:hidden text-slate-500" onClick={() => setSidebarOpen(true)}>
                             <Menu className="h-5 w-5" />
                         </Button>
-                        <h1 className="text-xl font-semibold text-gray-800 capitalize">
-                            {location.pathname === "/dashboard" ? "Dashboard" :
-                                location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
-                                    location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
-                                        location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
-                                            location.pathname === "/input-data/akta-perkawinan" ? "Input Akta Perkawinan" :
-                                                location.pathname === "/input-data/akta-perceraian" ? "Input Akta Perceraian" :
-                                                    location.pathname === "/input-data/akta-kematian" ? "Input Akta Kematian" :
-                                                        location.pathname === "/settings" ? "Pengaturan Akun" :
-                                                            "Admin Panel"}
-                        </h1>
+
+                        {/* Dynamic Header Content */}
+                        {location.pathname === "/dashboard" ? (
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    Selamat Datang Kembali, {userName} <span className="text-xl">👋</span>
+                                </h1>
+                                <p className="text-sm text-muted-foreground hidden sm:block">
+                                    Pantau, kelola, dan analisis data kependudukan Dinas Dukcapil.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-sm lg:text-base">
+                                <span className="text-muted-foreground font-medium hidden sm:inline-block">Pages</span>
+                                <span className="text-muted-foreground hidden sm:inline-block">/</span>
+                                <h1 className="text-base lg:text-lg font-bold text-slate-800">
+                                    {location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
+                                        location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
+                                            location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
+                                                location.pathname === "/input-data/akta-perkawinan" ? "Input Akta Perkawinan" :
+                                                    location.pathname === "/input-data/akta-perceraian" ? "Input Akta Perceraian" :
+                                                        location.pathname === "/input-data/akta-kematian" ? "Input Akta Kematian" :
+                                                            location.pathname === "/settings" ? "Pengaturan Akun" :
+                                                                "Admin Panel"}
+                                </h1>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {userInitial}
-                        </div>
-                        <span className="text-sm font-medium mr-2 hidden sm:block">{userName}</span>
+
+                    {/* Right Side Tools */}
+                    <div className="flex items-center gap-4">
+                        <NotificationDropdown />
+                        <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+
+                        {/* User Profile */}
+                        <ProfileDropdown />
                     </div>
                 </header>
 
