@@ -373,14 +373,16 @@ export function AktaPerkawinanForm() {
             </AlertDialog>
 
             <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-                <div className="w-full xl:w-auto">
+                <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data Akta Perkawinan</h2>
                     <p className="text-sm text-muted-foreground">Kelola pencatatan perkawinan penduduk.</p>
                 </div>
-                <div className="flex flex-col gap-3 w-full xl:w-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 w-full">
+
+                <div className="flex flex-col gap-2 w-full xl:w-auto">
+                    {/* Filters Row */}
+                    <div className="flex flex-wrap gap-2 w-full xl:justify-end">
                         <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Tahun" />
                             </SelectTrigger>
                             <SelectContent>
@@ -392,7 +394,7 @@ export function AktaPerkawinanForm() {
                         </Select>
 
                         <Select value={selectedReligion} onValueChange={setSelectedReligion}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Agama" />
                             </SelectTrigger>
                             <SelectContent>
@@ -408,7 +410,7 @@ export function AktaPerkawinanForm() {
                         </Select>
 
                         <Select value={selectedType} onValueChange={setSelectedType}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Jenis" />
                             </SelectTrigger>
                             <SelectContent>
@@ -420,7 +422,7 @@ export function AktaPerkawinanForm() {
                         </Select>
 
                         <Select value={selectedDeret} onValueChange={setSelectedDeret}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Deret" />
                             </SelectTrigger>
                             <SelectContent>
@@ -432,21 +434,36 @@ export function AktaPerkawinanForm() {
                         </Select>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-2 w-full">
-                        <div className="relative flex-1">
+                    {/* Actions Row */}
+                    <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center xl:justify-end">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Cari..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            <Input
+                                placeholder="Cari..."
+                                className="pl-8 w-full"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        <div className="grid grid-cols-2 sm:flex gap-2">
+
+                        <div className="flex gap-2 w-full sm:w-auto">
                             <ExcelActions data={dataList} fileName="Data_Akta_Perkawinan" onImport={handleImport} isLoading={loading} />
-                            <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-pink-600 border-pink-200 bg-pink-50 hover:bg-pink-100">
-                                <FileDown className="h-4 w-4" /> PDF
-                            </Button>
-                            <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-pink-600 hover:bg-pink-700 col-span-2 sm:col-span-1">
-                                {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                {showForm ? "Batal" : "Tambah"}
+                            <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-pink-600 border-pink-200 bg-pink-50 hover:bg-pink-100" title="Export Laporan PDF">
+                                <FileDown className="h-4 w-4" />
+                                Export PDF
                             </Button>
                         </div>
+
+                        <Button onClick={() => {
+                            if (showForm) {
+                                resetForm()
+                            } else {
+                                setShowForm(true)
+                            }
+                        }} className="gap-2 bg-pink-600 hover:bg-pink-700 w-full sm:w-auto">
+                            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            {showForm ? "Batal" : "Tambah"}
+                        </Button>
                     </div>
                 </div>
             </div>

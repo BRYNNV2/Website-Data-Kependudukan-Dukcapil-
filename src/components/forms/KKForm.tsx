@@ -70,6 +70,7 @@ export function KKForm() {
     const [searchTerm, setSearchTerm] = useState("")
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<KKData | null>(null)
+    const [lastInput, setLastInput] = useState({ keterangan: "", deret: "" })
 
     // Get unique Deret values for filter dropdown
     const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
@@ -183,7 +184,9 @@ export function KKForm() {
                 toast.success("Data Kartu Keluarga berhasil disimpan")
             }
 
-            resetForm()
+            const nextDefaults = !editId ? { keterangan: formData.keterangan || "", deret: formData.deret || "" } : undefined
+            if (!editId && nextDefaults) setLastInput(nextDefaults)
+            resetForm(nextDefaults)
             fetchData() // Refresh list
         } catch (error: any) {
             toast.error("Gagal menyimpan: " + error.message)
@@ -192,7 +195,8 @@ export function KKForm() {
         }
     }
 
-    const resetForm = () => {
+    const resetForm = (defaults?: { keterangan: string, deret: string }) => {
+        const initial = defaults || lastInput
         setFormData({
             no_kk: "",
             kepala_keluarga: "",
@@ -202,8 +206,8 @@ export function KKForm() {
             latitude: "",
             longitude: "",
             tanggal_dikeluarkan: "",
-            keterangan: "",
-            deret: ""
+            keterangan: initial.keterangan,
+            deret: initial.deret
         })
         setSelectedFile(null)
         setCurrentImage(null)
@@ -442,7 +446,7 @@ export function KKForm() {
                         <ExcelActions data={dataList} fileName="Data_Kartu_Keluarga" onImport={handleImport} isLoading={loading} />
                         <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4" />
-                            <span className="hidden sm:inline">PDF</span>
+                            Export PDF
                         </Button>
                     </div>
                     <Button onClick={() => {

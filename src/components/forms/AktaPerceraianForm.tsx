@@ -350,14 +350,16 @@ export function AktaPerceraianForm() {
             </AlertDialog>
 
             <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-                <div className="w-full xl:w-auto">
+                <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data Akta Perceraian</h2>
                     <p className="text-sm text-muted-foreground">Kelola pencatatan perceraian penduduk.</p>
                 </div>
-                <div className="flex flex-col gap-3 w-full xl:w-auto">
-                    <div className="grid grid-cols-2 gap-2 w-full">
+
+                <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
+                    {/* Filters */}
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Tahun" />
                             </SelectTrigger>
                             <SelectContent>
@@ -369,7 +371,7 @@ export function AktaPerceraianForm() {
                         </Select>
 
                         <Select value={selectedDeret} onValueChange={setSelectedDeret}>
-                            <SelectTrigger className="bg-white w-full">
+                            <SelectTrigger className="w-full sm:w-32 bg-white">
                                 <SelectValue placeholder="Deret" />
                             </SelectTrigger>
                             <SelectContent>
@@ -381,22 +383,36 @@ export function AktaPerceraianForm() {
                         </Select>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-2 w-full">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Cari..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        </div>
-                        <div className="grid grid-cols-2 sm:flex gap-2">
-                            <ExcelActions data={dataList} fileName="Data_Akta_Perceraian" onImport={handleImport} isLoading={loading} />
-                            <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100">
-                                <FileDown className="h-4 w-4" /> PDF
-                            </Button>
-                            <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-purple-600 hover:bg-purple-700 col-span-2 sm:col-span-1">
-                                {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                {showForm ? "Batal" : "Tambah"}
-                            </Button>
-                        </div>
+                    {/* Search */}
+                    <div className="relative w-full sm:w-48 lg:w-64">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Cari..."
+                            className="pl-8 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <ExcelActions data={dataList} fileName="Data_Akta_Perceraian" onImport={handleImport} isLoading={loading} />
+                        <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4" />
+                            Export PDF
+                        </Button>
+                    </div>
+
+                    <Button onClick={() => {
+                        if (showForm) {
+                            resetForm()
+                        } else {
+                            setShowForm(true)
+                        }
+                    }} className="gap-2 bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
+                        {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        {showForm ? "Batal" : "Tambah"}
+                    </Button>
                 </div>
             </div>
 
