@@ -374,7 +374,7 @@ export function AktaForm() {
             </AlertDialog>
 
             {/* Header with Search and Add Button */}
-            <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Data Akta Kelahiran</h2>
                     <p className="text-sm text-muted-foreground">Kelola data Akta Kelahiran</p>
@@ -408,7 +408,7 @@ export function AktaForm() {
                         <ExcelActions data={dataList} fileName="Data_Akta_Kelahiran" onImport={handleImport} isLoading={loading} />
                         <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4" />
-                            <span className="hidden sm:inline">PDF</span>
+                            Export PDF
                         </Button>
                     </div>
                     <Button onClick={() => {
