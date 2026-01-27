@@ -54,7 +54,7 @@ export function ExcelActions({ data, fileName, onImport, isLoading }: ExcelActio
     }
 
     return (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleExport} className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 hover:border-green-300">
                 <FileDown className="h-4 w-4 mr-2" />
                 Export Excel

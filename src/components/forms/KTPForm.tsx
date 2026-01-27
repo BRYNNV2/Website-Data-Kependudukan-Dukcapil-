@@ -400,7 +400,7 @@ export function KTPForm() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <ExcelActions data={dataList} fileName="Data_KTP" onImport={handleImport} isLoading={loading} />
                         <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 bg-red-50 text-red-700 hover:bg-red-100 border-red-200" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4" />
