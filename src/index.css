@@ -58,3 +58,31 @@
     @apply bg-background text-foreground overflow-x-hidden;
   }
 }
+
+/* Hard Lock Scroll for Joyride Tour */
+.joyride-lock-scroll {
+  overflow: hidden !important;
+  height: 100vh !important;
+  position: fixed !important;
+  width: 100% !important;
+}
+
+/* 
+   DISABLE TRANSITIONS DURING TOUR 
+   This ensures the sidebar snaps to position immediately,
+   allowing Joyride to calculate the spotlight position correctly
+   without being thrown off by the slide animation.
+*/
+body.joyride-lock-scroll aside,
+body.joyride-lock-scroll aside * {
+  transition: none !important;
+  transform: none !important;
+  /* Ensure no transform lag, though verify this doesn't break open state */
+}
+
+/* We need to allow transform for the open/close logic (translate-x), 
+   but make it instant (duration-0). */
+body.joyride-lock-scroll aside {
+  transition-property: none !important;
+  transition-duration: 0s !important;
+}

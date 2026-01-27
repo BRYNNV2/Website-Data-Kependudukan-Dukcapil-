@@ -7,6 +7,7 @@ import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
 import { NotificationDropdown } from "./NotificationDropdown"
 import { ProfileDropdown } from "./ProfileDropdown"
+import { OnboardingTour } from "./OnboardingTour"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -44,6 +45,18 @@ export default function Layout({ children }: LayoutProps) {
             }
         }
         getName()
+
+        // Sidebar control for tour
+        const handleOpenSidebar = () => setSidebarOpen(true);
+        const handleCloseSidebar = () => setSidebarOpen(false); // Optional, if needed
+
+        window.addEventListener('open-sidebar', handleOpenSidebar);
+        window.addEventListener('close-sidebar', handleCloseSidebar);
+
+        return () => {
+            window.removeEventListener('open-sidebar', handleOpenSidebar);
+            window.removeEventListener('close-sidebar', handleCloseSidebar);
+        }
     }, [])
 
     const isActive = (path: string) => location.pathname === path
@@ -98,6 +111,9 @@ export default function Layout({ children }: LayoutProps) {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-background flex">
+            {/* Onboarding Tour Component */}
+            <OnboardingTour />
+
             {/* Logout Alert */}
             <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
                 <AlertDialogContent>
@@ -125,12 +141,11 @@ export default function Layout({ children }: LayoutProps) {
             )}
 
             {/* Sidebar */}
-            {/* Sidebar */}
             <aside className={cn(
                 "fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50 bg-background border-r transition-all duration-300 transform lg:transform-none flex flex-col",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full",
                 isCollapsed ? "w-20" : "w-64"
-            )}>
+            )} id="sidebar-menu">
                 {/* Sidebar Header */}
                 <div className={cn("h-16 flex items-center border-b relative z-20", isCollapsed ? "justify-center px-0" : "px-6")}>
                     <div className={cn("flex items-center gap-3 transition-all duration-300", isCollapsed ? "justify-center w-full" : "")}>
@@ -163,10 +178,13 @@ export default function Layout({ children }: LayoutProps) {
                 {/* Sidebar Nav */}
                 <div className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-2 transition-all">MENU UTAMA</p>}
-                    <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+
+                    <div id="nav-dashboard">
+                        <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+                    </div>
 
                     {/* Input Data - Expandable Menu */}
-                    <div>
+                    <div id="nav-input-data">
                         <button
                             onClick={() => {
                                 if (isCollapsed) setIsCollapsed(false);
@@ -208,9 +226,13 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
-                    <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
+                    <div id="nav-activity-log">
+                        <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
+                    </div>
                     <NavItem to="/recycle-bin" icon={Trash2} label="Tempat Sampah" />
-                    <NavItem to="/settings" icon={Settings} label="Pengaturan" />
+                    <div id="nav-settings">
+                        <NavItem to="/settings" icon={Settings} label="Pengaturan" />
+                    </div>
                 </div>
 
                 {/* Sidebar Footer */}
@@ -265,7 +287,7 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
 
                     {/* Right Side Tools */}
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4" id="action-buttons">
                         <ModeToggle />
                         <NotificationDropdown />
                         <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>

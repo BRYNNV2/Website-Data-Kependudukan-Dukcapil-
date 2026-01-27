@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabaseClient"
-import { User, Lock, Mail, Loader2 } from "lucide-react"
+import { User, Lock, Mail, Loader2, HelpCircle, PlayCircle } from "lucide-react"
 
 export default function Settings() {
     const [loading, setLoading] = useState(false)
@@ -191,7 +191,38 @@ export default function Settings() {
                         </div>
                     </CardContent>
                 </Card>
+
+
+                {/* Help User Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <HelpCircle className="h-5 w-5 text-green-600" />
+                            Pusat Bantuan
+                        </CardTitle>
+                        <CardDescription>
+                            Bingung cara menggunakan aplikasi? Mulai tur interaktif kembali.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button
+                            onClick={() => {
+                                window.location.href = '/dashboard';
+                                // Use setTimeout to allow navigation to engage first, then trigger tour
+                                // We will handle the auto-start logic in OnboardingTour's useEffect based on a URL param or local storage flag if needed, 
+                                // BUT simpler: Dispatch event after small delay if on same page logic, or better:
+                                // Let's use a localStorage flag that OnboardingTour checks on mount "force_tour_start"
+                                localStorage.setItem('force_tour_restart', 'true');
+                            }}
+                            variant="secondary"
+                            className="bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                        >
+                            <PlayCircle className="mr-2 h-4 w-4" />
+                            Mulai Panduan Aplikasi
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
-        </div>
+        </div >
     )
 }
