@@ -505,8 +505,8 @@ export function AktaKematianForm() {
                                     <th className="p-3 font-medium">No. Surat</th>
                                     <th className="p-3 font-medium">Nama</th>
                                     <th className="p-3 font-medium">Tgl Meninggal</th>
-                                    <th className="p-3 font-medium">Deret</th>
-                                    <th className="p-3 font-medium">Keterangan</th>
+                                    <th className="p-3 font-medium hidden md:table-cell">Deret</th>
+                                    <th className="p-3 font-medium hidden md:table-cell">Keterangan</th>
                                     <th className="p-3 font-medium text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -530,8 +530,8 @@ export function AktaKematianForm() {
                                             <td className="p-3">
                                                 {new Date(item.tanggal_meninggal).toLocaleDateString("id-ID")}
                                             </td>
-                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600 hidden md:table-cell">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px] hidden md:table-cell">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center space-x-2">
                                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setViewItem(item)}>
                                                     <Eye className="h-4 w-4" />

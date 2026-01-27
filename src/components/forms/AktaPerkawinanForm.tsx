@@ -589,8 +589,8 @@ export function AktaPerkawinanForm() {
                                     <th className="p-3 font-medium">No. Akta</th>
                                     <th className="p-3 font-medium">Suami & Istri</th>
                                     <th className="p-3 font-medium">Agama</th>
-                                    <th className="p-3 font-medium">Deret</th>
-                                    <th className="p-3 font-medium">Keterangan</th>
+                                    <th className="p-3 font-medium hidden md:table-cell">Deret</th>
+                                    <th className="p-3 font-medium hidden md:table-cell">Keterangan</th>
                                     <th className="p-3 font-medium text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -623,8 +623,8 @@ export function AktaPerkawinanForm() {
                                                 <div>{item.agama}</div>
                                                 <div className="text-xs text-muted-foreground">{new Date(item.tanggal_terbit).toLocaleDateString("id-ID")}</div>
                                             </td>
-                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600 hidden md:table-cell">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px] hidden md:table-cell">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center space-x-2">
                                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setViewItem(item)}>
                                                     <Eye className="h-4 w-4" />

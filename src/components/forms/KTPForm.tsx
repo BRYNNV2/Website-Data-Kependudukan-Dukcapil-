@@ -532,8 +532,8 @@ export function KTPForm() {
                                     <tr className="border-b bg-muted/50">
                                         <th className="text-left p-3 font-medium">NIK</th>
                                         <th className="text-left p-3 font-medium">Nama Lengkap</th>
-                                        <th className="text-left p-3 font-medium">Deret</th>
-                                        <th className="text-left p-3 font-medium">Keterangan</th>
+                                        <th className="text-left p-3 font-medium hidden md:table-cell">Deret</th>
+                                        <th className="text-left p-3 font-medium hidden md:table-cell">Keterangan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
@@ -542,8 +542,8 @@ export function KTPForm() {
                                         <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
                                             <td className="p-3 font-mono text-xs">{item.nik}</td>
                                             <td className="p-3">{item.nama_lengkap}</td>
-                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600 hidden md:table-cell">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px] hidden md:table-cell">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"
