@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient"
-import { User, Lock } from "lucide-react"
+import { User, Lock, Mail } from "lucide-react"
 import logoTanjungpinang from "@/assets/logo_tanjungpinang.png"
 import { toast } from "sonner"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
 
 // Import background images from assets
 import LoginBg1 from "@/assets/login_bg_1.png"
@@ -17,7 +29,38 @@ export default function Login() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+    // Forgot Password State
+    const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
+    const [resetEmail, setResetEmail] = useState("")
+    const [resetLoading, setResetLoading] = useState(false)
+
     const navigate = useNavigate()
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!resetEmail) {
+            toast.error("Silakan masukkan email Anda")
+            return
+        }
+
+        setResetLoading(true)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            })
+
+            if (error) throw error
+
+            toast.success("Link reset password telah dikirim ke email Anda")
+            setForgotPasswordOpen(false)
+            setResetEmail("")
+        } catch (error: any) {
+            toast.error("Gagal mengirim link reset: " + error.message)
+        } finally {
+            setResetLoading(false)
+        }
+    }
 
     const backgroundImages = [LoginBg1, LoginBg2, LoginBg3]
 
@@ -207,9 +250,13 @@ export default function Login() {
                                     Ingat Saya
                                 </label>
                             </div>
-                            <a href="#" className="text-xs font-medium text-amber-600 hover:text-amber-700 hover:underline">
+                            <button
+                                type="button"
+                                onClick={() => setForgotPasswordOpen(true)}
+                                className="text-xs font-medium text-amber-600 hover:text-amber-700 hover:underline bg-transparent border-0 p-0"
+                            >
                                 Lupa Password?
-                            </a>
+                            </button>
                         </div>
 
                         <button
@@ -228,6 +275,43 @@ export default function Login() {
                             ) : "Masuk ke Dashboard"}
                         </button>
                     </form>
+
+                    {/* Forgot Password Dialog */}
+                    <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Lupa Password</DialogTitle>
+                                <DialogDescription>
+                                    Masukkan email yang terdaftar untuk menerima link reset password.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleResetPassword} className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="reset-email">Email</Label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="reset-email"
+                                            placeholder="contoh@email.com"
+                                            type="email"
+                                            value={resetEmail}
+                                            onChange={(e) => setResetEmail(e.target.value)}
+                                            className="pl-9"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                                    <Button type="button" variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+                                        Batal
+                                    </Button>
+                                    <Button type="submit" disabled={resetLoading}>
+                                        {resetLoading ? "Mengirim..." : "Kirim Link Reset"}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </div>

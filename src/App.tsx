@@ -16,6 +16,8 @@ import Settings from "@/pages/Settings"
 import RecycleBin from "@/pages/RecycleBin"
 import { ThemeProvider } from "@/components/theme-provider"
 
+import ResetPassword from "@/pages/ResetPassword"
+
 const LayoutWrapper = () => (
   <Layout>
     <Outlet />
@@ -28,6 +30,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route element={<LayoutWrapper />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
