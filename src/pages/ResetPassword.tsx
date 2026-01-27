@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient"
-import { Lock, CheckCircle, AlertTriangle } from "lucide-react"
+import { Lock, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"

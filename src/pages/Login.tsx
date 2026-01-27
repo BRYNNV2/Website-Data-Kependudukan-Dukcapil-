@@ -117,15 +117,13 @@ export default function Login() {
 
 
     return (
-        <div className="min-h-screen w-full flex font-sans bg-white">
-            {/* Left Side - Branding (Hidden on mobile) */}
-            <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white flex-col justify-between p-12 relative overflow-hidden">
-
-                {/* Background Slideshow */}
+        <div className="min-h-screen w-full flex font-sans bg-white relative">
+            {/* Background Slideshow - Visible on ALL screens now (Mobile & Desktop) */}
+            <div className="absolute inset-0 w-full h-full overflow-hidden">
                 {backgroundImages.map((img, index) => (
                     <div
                         key={index}
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${index === currentImageIndex ? "opacity-30" : "opacity-0"
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${index === currentImageIndex ? "opacity-100" : "opacity-0"
                             }`}
                         style={{
                             backgroundImage: `url(${img})`,
@@ -135,10 +133,12 @@ export default function Login() {
                         }}
                     />
                 ))}
+                {/* Dark Overlay for better text readability */}
+                <div className="absolute inset-0 bg-slate-900/40 lg:bg-slate-900/0 z-1" />
+            </div>
 
-                {/* Overlay to ensure text readability */}
-                <div className="absolute inset-0 bg-slate-900/80 z-1" />
-
+            {/* Left Side - Branding (Desktop Only Overlay) */}
+            <div className="hidden lg:flex lg:w-1/2 bg-slate-900/90 text-white flex-col justify-between p-12 relative z-10 backdrop-blur-sm">
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20">
@@ -167,12 +167,12 @@ export default function Login() {
                 </div>
             </div>
 
-            {/* Right Side - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50/50">
-                <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-gray-100 lg:border-none lg:shadow-none lg:bg-transparent animate-in fade-in slide-in-from-bottom-8 duration-700">
+            {/* Right Side - Login Form (Centered on Mobile) */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-transparent lg:bg-gray-50/50 relative z-20">
+                <div className="w-full max-w-md space-y-8 bg-white/95 backdrop-blur-sm lg:bg-white p-8 rounded-2xl shadow-2xl lg:shadow-sm border border-white/20 lg:border-gray-100 lg:border-none animate-in fade-in slide-in-from-bottom-8 duration-700">
                     {/* Mobile Logo (Visible only on mobile) */}
-                    <div className="lg:hidden flex justify-center mb-8">
-                        <div className="w-20 h-20 bg-white rounded-full shadow-md flex items-center justify-center p-2 mb-4">
+                    <div className="lg:hidden flex justify-center mb-6">
+                        <div className="w-20 h-20 bg-white rounded-full shadow-md flex items-center justify-center p-2 mb-2">
                             <img
                                 src={logoTanjungpinang}
                                 alt="Logo"
@@ -194,6 +194,7 @@ export default function Login() {
                     )}
 
                     <form onSubmit={handleLogin} className="space-y-6">
+                        {/* Form Inputs remain mostly the same, just ensuring responsiveness */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-700 ml-1">User ID</label>
                             <div className="relative group">
