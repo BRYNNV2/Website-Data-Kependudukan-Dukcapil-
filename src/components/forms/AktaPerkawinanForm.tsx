@@ -378,93 +378,92 @@ export function AktaPerkawinanForm() {
                     <p className="text-sm text-muted-foreground">Kelola pencatatan perkawinan penduduk.</p>
                 </div>
 
-                <div className="flex flex-col gap-2 w-full xl:w-auto">
-                    {/* Filters Row */}
-                    <div className="flex flex-wrap gap-2 w-full xl:justify-end">
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Tahun" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Tahun</SelectItem>
-                                {availableYears.map(year => (
-                                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {/* Unified Controls Container */}
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full xl:w-auto items-center xl:justify-end">
 
-                        <Select value={selectedReligion} onValueChange={setSelectedReligion}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Agama" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Agama</SelectItem>
-                                <SelectItem value="Islam">Islam</SelectItem>
-                                <SelectItem value="Kristen">Kristen</SelectItem>
-                                <SelectItem value="Nasrani">Nasrani</SelectItem>
-                                <SelectItem value="Katolik">Katolik</SelectItem>
-                                <SelectItem value="Hindu">Hindu</SelectItem>
-                                <SelectItem value="Buddha">Buddha</SelectItem>
-                                <SelectItem value="Konghucu">Konghucu</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    {/* Filters Group */}
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-full sm:w-[120px] bg-white">
+                            <SelectValue placeholder="Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Tahun</SelectItem>
+                            {availableYears.map(year => (
+                                <SelectItem key={year} value={year}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={selectedType} onValueChange={setSelectedType}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Jenis" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Jenis</SelectItem>
-                                <SelectItem value="Biasa">Biasa / Default</SelectItem>
-                                <SelectItem value="Umum">Umum</SelectItem>
-                                <SelectItem value="Campuran">Campuran</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <Select value={selectedReligion} onValueChange={setSelectedReligion}>
+                        <SelectTrigger className="w-full sm:w-[130px] bg-white">
+                            <SelectValue placeholder="Agama" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Agama</SelectItem>
+                            <SelectItem value="Islam">Islam</SelectItem>
+                            <SelectItem value="Kristen">Kristen</SelectItem>
+                            <SelectItem value="Nasrani">Nasrani</SelectItem>
+                            <SelectItem value="Katolik">Katolik</SelectItem>
+                            <SelectItem value="Hindu">Hindu</SelectItem>
+                            <SelectItem value="Buddha">Buddha</SelectItem>
+                            <SelectItem value="Konghucu">Konghucu</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={selectedDeret} onValueChange={setSelectedDeret}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Deret" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Deret</SelectItem>
-                                {uniqueDeretList.map(d => (
-                                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="w-full sm:w-[120px] bg-white">
+                            <SelectValue placeholder="Jenis" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Jenis</SelectItem>
+                            <SelectItem value="Biasa">Biasa / Default</SelectItem>
+                            <SelectItem value="Umum">Umum</SelectItem>
+                            <SelectItem value="Campuran">Campuran</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={selectedDeret} onValueChange={setSelectedDeret}>
+                        <SelectTrigger className="w-full sm:w-[100px] bg-white">
+                            <SelectValue placeholder="Deret" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Deret</SelectItem>
+                            {uniqueDeretList.map(d => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-48 lg:w-64">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Cari..."
+                            className="pl-8 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
 
-                    {/* Actions Row */}
-                    <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center xl:justify-end">
-                        <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Cari..."
-                                className="pl-8 w-full"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <ExcelActions data={dataList} fileName="Data_Akta_Perkawinan" onImport={handleImport} isLoading={loading} />
-                            <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-pink-600 border-pink-200 bg-pink-50 hover:bg-pink-100" title="Export Laporan PDF">
-                                <FileDown className="h-4 w-4" />
-                                Export PDF
-                            </Button>
-                        </div>
-
-                        <Button onClick={() => {
-                            if (showForm) {
-                                resetForm()
-                            } else {
-                                setShowForm(true)
-                            }
-                        }} className="gap-2 bg-pink-600 hover:bg-pink-700 w-full sm:w-auto">
-                            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                            {showForm ? "Batal" : "Tambah"}
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <ExcelActions data={dataList} fileName="Data_Akta_Perkawinan" onImport={handleImport} isLoading={loading} />
+                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 hover:border-red-300" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4 mr-2" />
+                            Export PDF
                         </Button>
                     </div>
+
+                    <Button onClick={() => {
+                        if (showForm) {
+                            resetForm()
+                        } else {
+                            setShowForm(true)
+                        }
+                    }} className="gap-2 bg-pink-600 hover:bg-pink-700 w-full sm:w-auto">
+                        {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        {showForm ? "Batal" : "Tambah"}
+                    </Button>
                 </div>
             </div>
 

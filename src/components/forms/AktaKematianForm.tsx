@@ -353,33 +353,33 @@ export function AktaKematianForm() {
                     <p className="text-sm text-muted-foreground">Kelola pencatatan kematian penduduk.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
-                    {/* Filters */}
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Tahun" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Tahun</SelectItem>
-                                {availableYears.map(year => (
-                                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {/* Unified Controls Container */}
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full xl:w-auto items-center xl:justify-end">
 
-                        <Select value={selectedDeret} onValueChange={setSelectedDeret}>
-                            <SelectTrigger className="w-full sm:w-32 bg-white">
-                                <SelectValue placeholder="Deret" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Deret</SelectItem>
-                                {uniqueDeretList.map(d => (
-                                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* Filters */}
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-full sm:w-[120px] bg-white">
+                            <SelectValue placeholder="Tahun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Tahun</SelectItem>
+                            {availableYears.map(year => (
+                                <SelectItem key={year} value={year}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={selectedDeret} onValueChange={setSelectedDeret}>
+                        <SelectTrigger className="w-full sm:w-[100px] bg-white">
+                            <SelectValue placeholder="Deret" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua Deret</SelectItem>
+                            {uniqueDeretList.map(d => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
                     {/* Search */}
                     <div className="relative w-full sm:w-48 lg:w-64">
@@ -395,8 +395,8 @@ export function AktaKematianForm() {
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <ExcelActions data={dataList} fileName="Data_Akta_Kematian" onImport={handleImport} isLoading={loading} />
-                        <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100" title="Export Laporan PDF">
-                            <FileDown className="h-4 w-4" />
+                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 hover:border-red-300" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4 mr-2" />
                             Export PDF
                         </Button>
                     </div>

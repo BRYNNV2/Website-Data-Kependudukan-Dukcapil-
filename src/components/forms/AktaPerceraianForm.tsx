@@ -397,8 +397,8 @@ export function AktaPerceraianForm() {
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <ExcelActions data={dataList} fileName="Data_Akta_Perceraian" onImport={handleImport} isLoading={loading} />
-                        <Button variant="outline" onClick={handleDownloadPDF} className="gap-2 text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100" title="Export Laporan PDF">
-                            <FileDown className="h-4 w-4" />
+                        <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 hover:border-red-300" title="Export Laporan PDF">
+                            <FileDown className="h-4 w-4 mr-2" />
                             Export PDF
                         </Button>
                     </div>
