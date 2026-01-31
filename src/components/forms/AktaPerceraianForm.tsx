@@ -1,3 +1,4 @@
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
@@ -162,6 +163,7 @@ export function AktaPerceraianForm() {
                 if (error) throw error
                 await logActivity("UPDATE AKTA PERCERAIAN", `Update No. ${formData.no_akta} (${formData.nama_suami} & ${formData.nama_istri})`)
                 toast.success("Data berhasil diperbarui")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             } else {
                 const { error } = await supabase.from("akta_perceraian").insert({
                     no_akta: formData.no_akta,
@@ -176,6 +178,7 @@ export function AktaPerceraianForm() {
                 if (error) throw error
                 await logActivity("TAMBAH AKTA PERCERAIAN", `Tambah No. ${formData.no_akta} (${formData.nama_suami} & ${formData.nama_istri})`)
                 toast.success("Data berhasil disimpan")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             }
 
             resetForm()
@@ -502,7 +505,14 @@ export function AktaPerceraianForm() {
                             </thead>
                             <tbody>
                                 {isFetching ? (
-                                    <tr><td colSpan={6} className="p-4 text-center">Memuat data...</td></tr>
+                                    <tr>
+                                        <td colSpan={6} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center h-full gap-4">
+                                                <ThreeBodyLoader size={45} color="#E91E63" />
+                                                <p className="text-sm font-medium text-purple-600/80 animate-pulse">Memuat data Akta Perceraian...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : filteredData.length === 0 ? (
                                     <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>
                                 ) : (

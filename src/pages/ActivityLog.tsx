@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { ScrollText, Clock, User, Activity } from "lucide-react"
+import { ScrollText, Clock, User, Activity, ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
+import { Button } from "@/components/ui/button"
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 
 interface LogItem {
     id: number
@@ -16,23 +18,45 @@ interface LogItem {
 export default function ActivityLog() {
     const [logs, setLogs] = useState<LogItem[]>([])
     const [loading, setLoading] = useState(true)
+    const [page, setPage] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const pageSize = 10
+
+    // Auto-pruning logs older than 7 days on mount
+    useEffect(() => {
+        const pruneLogs = async () => {
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+            const { error, count } = await supabase
+                .from('activity_logs')
+                .delete({ count: 'exact' })
+                .lt('created_at', sevenDaysAgo.toISOString())
+
+            if (!error && count && count > 0) {
+                console.log(`Auto-pruned ${count} old logs.`)
+            }
+        }
+        pruneLogs()
+    }, [])
 
     useEffect(() => {
         fetchLogs()
-    }, [])
+    }, [page])
 
     const fetchLogs = async () => {
         setLoading(true)
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
             .from('activity_logs')
-            .select('*')
+            .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
-            .limit(50) // Limit to last 50 activities for performance
+            .range(page * pageSize, (page + 1) * pageSize - 1)
 
         if (error) {
             console.error(error)
         } else if (data) {
             setLogs(data)
+            if (count) setTotalPages(Math.ceil(count / pageSize))
         }
         setLoading(false)
     }
@@ -44,11 +68,47 @@ export default function ActivityLog() {
         return "bg-gray-100 text-gray-700"
     }
 
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = []
+        // If total pages is small, show all
+        if (totalPages <= 7) {
+            for (let i = 0; i < totalPages; i++) pages.push(i)
+        } else {
+            // Logic to show: First, Last, and Current neighborhood
+            // Simplified: Show standard sliding window for now to match request "1, 2, 3, 4, 5" style
+            if (page < 4) {
+                // Show 1, 2, 3, 4, 5 ... Last
+                for (let i = 0; i < 5; i++) pages.push(i)
+                pages.push(-1) // Separator
+                pages.push(totalPages - 1)
+            } else if (page > totalPages - 5) {
+                // Show First ... n-4, n-3, n-2, n-1, n
+                pages.push(0)
+                pages.push(-1)
+                for (let i = totalPages - 5; i < totalPages; i++) pages.push(i)
+            } else {
+                // Show First ... q-1, q, q+1 ... Last
+                pages.push(0)
+                pages.push(-1)
+                for (let i = page - 1; i <= page + 1; i++) pages.push(i)
+                pages.push(-1)
+                pages.push(totalPages - 1)
+            }
+        }
+        return pages
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight text-gray-800">Log Aktivitas</h2>
-                <p className="text-muted-foreground">Riwayat aktivitas pengguna dalam sistem.</p>
+                <div className="flex items-center gap-2 text-muted-foreground mt-1">
+                    <p>Riwayat aktivitas pengguna dalam sistem.</p>
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-orange-200">
+                        Auto-delete 7 hari
+                    </span>
+                </div>
             </div>
 
             <Card>
@@ -61,19 +121,19 @@ export default function ActivityLog() {
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-16 bg-muted rounded-md animate-pulse" />
-                            ))}
+                        <div className="flex flex-col items-center justify-center py-12 gap-4">
+                            <ThreeBodyLoader size={45} color="#6366f1" />
+                            <p className="text-sm font-medium text-indigo-600/80 animate-pulse">Memuat riwayat aktivitas...</p>
                         </div>
                     ) : logs.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            Belum ada aktivitas tercatat.
+                        <div className="text-center py-12 text-muted-foreground flex flex-col items-center gap-3">
+                            <Clock className="h-10 w-10 text-gray-300" />
+                            <p>Belum ada aktivitas tercatat.</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {logs.map((log) => (
-                                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors gap-4">
+                                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors gap-4 group">
                                     <div className="flex items-start gap-3">
                                         <div className={`p-2 rounded-full mt-1 ${getActionColor(log.action)}`}>
                                             <Activity className="h-4 w-4" />
@@ -99,6 +159,49 @@ export default function ActivityLog() {
                             ))}
                         </div>
                     )}
+
+                    {/* Pagination Controls */}
+                    <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t gap-4">
+                        <div className="text-sm text-muted-foreground order-2 sm:order-1">
+                            Menampilkan halaman {page + 1} dari {totalPages}
+                        </div>
+
+                        <div className="flex items-center gap-1 order-1 sm:order-2">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setPage(p => Math.max(0, p - 1))}
+                                disabled={page === 0 || loading}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+
+                            {getPageNumbers().map((pageNum, idx) => (
+                                pageNum === -1 ? (
+                                    <span key={`sep-${idx}`} className="mx-1 text-muted-foreground">...</span>
+                                ) : (
+                                    <Button
+                                        key={pageNum}
+                                        variant={page === pageNum ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setPage(pageNum)}
+                                        className={`w-8 h-8 p-0 ${page === pageNum ? 'pointer-events-none' : ''}`}
+                                    >
+                                        {pageNum + 1}
+                                    </Button>
+                                )
+                            ))}
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page >= totalPages - 1 || loading}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>

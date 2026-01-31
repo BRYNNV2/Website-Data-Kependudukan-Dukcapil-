@@ -1,3 +1,4 @@
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
@@ -63,6 +64,8 @@ export function KTPForm() {
     const [searchTerm, setSearchTerm] = useState("")
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<KTPData | null>(null)
+    const [nikError, setNikError] = useState<string | null>(null)
+    const [isCheckingNik, setIsCheckingNik] = useState(false)
 
     // Get unique Deret values for filter dropdown
     const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
@@ -83,6 +86,53 @@ export function KTPForm() {
         fetchData()
     }, [])
 
+    // Real-time NIK Validation
+    useEffect(() => {
+        const checkNikAvailability = async () => {
+            if (!formData.nik || formData.nik.length < 16) {
+                setNikError(null)
+                return
+            }
+
+            setIsCheckingNik(true)
+            try {
+                // Check if NIK exists in database
+                let query = supabase
+                    .from('penduduk')
+                    .select('id, nik')
+                    .eq('nik', formData.nik)
+                    .eq('is_deleted', false) // Only check active records specifically
+
+                // If editing, allow same NIK if it belongs to current record
+                if (editId) {
+                    query = query.neq('id', editId)
+                }
+
+                const { data, error } = await query
+
+                if (error) throw error
+
+                if (data && data.length > 0) {
+                    setNikError("NIK sudah terdaftar di sistem!")
+                } else {
+                    setNikError(null)
+                }
+            } catch (error) {
+                console.error("Error checking NIK:", error)
+            } finally {
+                setIsCheckingNik(false)
+            }
+        }
+
+        const timeoutId = setTimeout(() => {
+            if (formData.nik.length === 16) {
+                checkNikAvailability()
+            }
+        }, 500) // Debounce 500ms
+
+        return () => clearTimeout(timeoutId)
+    }, [formData.nik, editId])
+
     const fetchData = async () => {
         setIsFetching(true)
         const { data, error } = await supabase
@@ -99,6 +149,10 @@ export function KTPForm() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value })
+        if (e.target.id === 'nik') {
+            // Reset error immediately when user types to avoid stale error state
+            if (e.target.value.length !== 16) setNikError(null)
+        }
     }
 
     const handleSubmit = async () => {
@@ -151,6 +205,7 @@ export function KTPForm() {
                 if (error) throw error
                 await logActivity("UPDATE DATA KTP", `Memperbarui KTP NIK: ${formData.nik} (${formData.nama})`)
                 toast.success("Data KTP berhasil diperbarui")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             } else {
                 // Insert new
                 const { error } = await supabase.from("penduduk").insert({
@@ -167,6 +222,7 @@ export function KTPForm() {
                 if (error) throw error
                 await logActivity("TAMBAH DATA KTP", `Menambahkan KTP NIK: ${formData.nik} (${formData.nama})`)
                 toast.success("Data KTP berhasil disimpan")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             }
 
             resetForm()
@@ -432,7 +488,16 @@ export function KTPForm() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="nik">NIK</Label>
-                            <Input id="nik" value={formData.nik} onChange={handleChange} placeholder="16 digit NIK" />
+                            <Input
+                                id="nik"
+                                value={formData.nik}
+                                onChange={handleChange}
+                                placeholder="16 digit NIK"
+                                className={nikError ? "border-red-500 focus-visible:ring-red-500" : (formData.nik.length === 16 && !isCheckingNik ? "border-green-500 focus-visible:ring-green-500" : "")}
+                            />
+                            {isCheckingNik && <p className="text-xs text-muted-foreground mt-1 animate-pulse">Memeriksa ketersediaan NIK...</p>}
+                            {!isCheckingNik && nikError && <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1"><X className="h-3 w-3" /> {nikError}</p>}
+                            {!isCheckingNik && !nikError && formData.nik.length === 16 && <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">✓ NIK tersedia</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="nama">Nama Lengkap</Label>
@@ -502,7 +567,9 @@ export function KTPForm() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button onClick={handleSubmit} disabled={loading}>{loading ? "Menyimpan..." : (editId ? "Simpan Perubahan" : "Simpan Data KTP")}</Button>
+                        <Button onClick={handleSubmit} disabled={loading || isCheckingNik || !!nikError} className={nikError ? "opacity-50 cursor-not-allowed" : ""}>
+                            {loading ? "Menyimpan..." : (editId ? "Simpan Perubahan" : "Simpan Data KTP")}
+                        </Button>
                     </CardFooter>
                 </Card>
             )
@@ -516,10 +583,9 @@ export function KTPForm() {
                 </CardHeader>
                 <CardContent>
                     {isFetching ? (
-                        <div className="space-y-3">
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
+                        <div className="flex flex-col items-center justify-center py-12 gap-4">
+                            <ThreeBodyLoader size={45} color="#2563EB" />
+                            <p className="text-sm font-medium text-blue-600/80 animate-pulse">Memuat data KTP...</p>
                         </div>
                     ) : filteredData.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">

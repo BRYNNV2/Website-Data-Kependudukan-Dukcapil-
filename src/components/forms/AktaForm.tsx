@@ -1,3 +1,4 @@
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
@@ -154,6 +155,7 @@ export function AktaForm() {
                 if (error) throw error
                 await logActivity("UPDATE DATA AKTA", `Memperbarui Akta No: ${formData.no_akta} (${formData.nama_anak})`)
                 toast.success("Data Akta Kelahiran berhasil diperbarui")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             } else {
                 // Insert
                 const { error } = await supabase.from("akta_kelahiran").insert({
@@ -170,6 +172,7 @@ export function AktaForm() {
                 if (error) throw error
                 await logActivity("TAMBAH DATA AKTA", `Menambahkan Akta No: ${formData.no_akta} (${formData.nama_anak})`)
                 toast.success("Data Akta Kelahiran berhasil disimpan")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             }
 
             resetForm()
@@ -519,10 +522,9 @@ export function AktaForm() {
                 </CardHeader>
                 <CardContent>
                     {isFetching ? (
-                        <div className="space-y-3">
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
+                        <div className="flex flex-col items-center justify-center py-12 gap-4">
+                            <ThreeBodyLoader size={45} color="#F59E0B" />
+                            <p className="text-sm font-medium text-orange-600/80 animate-pulse">Memuat data Akta Kelahiran...</p>
                         </div>
                     ) : filteredData.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">

@@ -1,3 +1,4 @@
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
@@ -165,11 +166,13 @@ export function AktaKematianForm() {
                 if (error) throw error
                 await logActivity("UPDATE AKTA KEMATIAN", `Update No. ${formData.no_surat} - ${formData.nama}`)
                 toast.success("Data berhasil diperbarui")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             } else {
                 const { error } = await supabase.from("akta_kematian").insert(payload)
                 if (error) throw error
                 await logActivity("TAMBAH AKTA KEMATIAN", `Tambah No. ${formData.no_surat} - ${formData.nama}`)
                 toast.success("Data berhasil disimpan")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             }
 
             resetForm()
@@ -513,10 +516,10 @@ export function AktaKematianForm() {
                             <tbody>
                                 {isFetching ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
-                                                <p>Memuat data...</p>
+                                        <td colSpan={6} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center h-full gap-4">
+                                                <ThreeBodyLoader size={45} color="#475569" />
+                                                <p className="text-sm font-medium text-slate-600/80 animate-pulse">Memuat data Akta Kematian...</p>
                                             </div>
                                         </td>
                                     </tr>

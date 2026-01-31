@@ -20,8 +20,6 @@ import {
     Bar,
 } from "recharts"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-
 import { PopulationMap } from "@/components/PopulationMap"
 
 interface CompletenessStat {

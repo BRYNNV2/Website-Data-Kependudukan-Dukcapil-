@@ -1,3 +1,4 @@
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -71,6 +72,8 @@ export function KKForm() {
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<KKData | null>(null)
     const [lastInput, setLastInput] = useState({ keterangan: "", deret: "" })
+    const [noKkError, setNoKkError] = useState<string | null>(null)
+    const [isCheckingNoKk, setIsCheckingNoKk] = useState(false)
 
     // Get unique Deret values for filter dropdown
     const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
@@ -91,6 +94,53 @@ export function KKForm() {
         fetchData()
     }, [])
 
+    // Real-time No. KK Validation
+    useEffect(() => {
+        const checkNoKkAvailability = async () => {
+            if (!formData.no_kk || formData.no_kk.length < 16) {
+                setNoKkError(null)
+                return
+            }
+
+            setIsCheckingNoKk(true)
+            try {
+                // Check if No KK exists in database
+                let query = supabase
+                    .from('kartu_keluarga')
+                    .select('id, no_kk')
+                    .eq('no_kk', formData.no_kk)
+                    .eq('is_deleted', false)
+
+                // If editing, allow same No KK if it belongs to current record
+                if (editId) {
+                    query = query.neq('id', editId)
+                }
+
+                const { data, error } = await query
+
+                if (error) throw error
+
+                if (data && data.length > 0) {
+                    setNoKkError("Nomor KK sudah terdaftar!")
+                } else {
+                    setNoKkError(null)
+                }
+            } catch (error) {
+                console.error("Error checking No KK:", error)
+            } finally {
+                setIsCheckingNoKk(false)
+            }
+        }
+
+        const timeoutId = setTimeout(() => {
+            if (formData.no_kk.length === 16) {
+                checkNoKkAvailability()
+            }
+        }, 500) // Debounce 500ms
+
+        return () => clearTimeout(timeoutId)
+    }, [formData.no_kk, editId])
+
     const fetchData = async () => {
         setIsFetching(true)
         const { data, error } = await supabase
@@ -107,6 +157,10 @@ export function KKForm() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.id]: e.target.value })
+        if (e.target.id === 'no_kk') {
+            // Reset error immediately when user types to avoid stale error state
+            if (e.target.value.length !== 16) setNoKkError(null)
+        }
     }
 
     const handleSubmit = async () => {
@@ -162,6 +216,7 @@ export function KKForm() {
                 if (error) throw error
                 await logActivity("UPDATE DATA KK", `Memperbarui KK No. ${formData.no_kk} (${formData.kepala_keluarga})`)
                 toast.success("Data Kartu Keluarga berhasil diperbarui")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             } else {
                 // Insert new
                 const { error } = await supabase.from("kartu_keluarga").insert({
@@ -182,6 +237,7 @@ export function KKForm() {
 
                 await logActivity("TAMBAH DATA KK", `Menambahkan KK No. ${formData.no_kk} (${formData.kepala_keluarga})`)
                 toast.success("Data Kartu Keluarga berhasil disimpan")
+                window.dispatchEvent(new Event('trigger-notification-refresh'))
             }
 
             const nextDefaults = !editId ? { keterangan: formData.keterangan || "", deret: formData.deret || "" } : undefined
@@ -474,7 +530,16 @@ export function KKForm() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="no_kk">Nomor KK</Label>
-                            <Input id="no_kk" value={formData.no_kk} onChange={handleChange} placeholder="16 digit Nomor KK" />
+                            <Input
+                                id="no_kk"
+                                value={formData.no_kk}
+                                onChange={handleChange}
+                                placeholder="16 digit Nomor KK"
+                                className={noKkError ? "border-red-500 focus-visible:ring-red-500" : (formData.no_kk.length === 16 && !isCheckingNoKk ? "border-green-500 focus-visible:ring-green-500" : "")}
+                            />
+                            {isCheckingNoKk && <p className="text-xs text-muted-foreground mt-1 animate-pulse">Memeriksa ketersediaan No. KK...</p>}
+                            {!isCheckingNoKk && noKkError && <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1"><X className="h-3 w-3" /> {noKkError}</p>}
+                            {!isCheckingNoKk && !noKkError && formData.no_kk.length === 16 && <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">✓ Nomor KK tersedia</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="kepala_keluarga">Nama Kepala Keluarga</Label>
@@ -574,7 +639,7 @@ export function KKForm() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button onClick={handleSubmit} disabled={loading}>
+                        <Button onClick={handleSubmit} disabled={loading || isCheckingNoKk || !!noKkError} className={noKkError ? "opacity-50 cursor-not-allowed" : ""}>
                             {loading ? "Menyimpan..." : (deleteId ? "Simpan Perubahan" : "Simpan Data KK")}
                         </Button>
                     </CardFooter>
@@ -591,10 +656,9 @@ export function KKForm() {
                 </CardHeader>
                 <CardContent>
                     {isFetching ? (
-                        <div className="space-y-3">
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
-                            <div className="h-12 w-full bg-muted rounded-md animate-pulse" />
+                        <div className="flex flex-col items-center justify-center py-12 gap-4">
+                            <ThreeBodyLoader size={45} color="#16A34A" />
+                            <p className="text-sm font-medium text-green-600/80 animate-pulse">Memuat data Kartu Keluarga...</p>
                         </div>
                     ) : filteredData.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">

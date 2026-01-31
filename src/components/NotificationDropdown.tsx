@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, FileWarning, CheckCircle, Info } from 'lucide-react';
+import { Bell, FileWarning, CheckCircle, Info, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,58 +34,111 @@ export const NotificationDropdown = () => {
         };
     }, []);
 
+    const dismissNotification = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        const dismissedIds = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
+        if (!dismissedIds.includes(id)) {
+            const updatedDismissedIds = [...dismissedIds, id];
+            localStorage.setItem('dismissed_notifications', JSON.stringify(updatedDismissedIds));
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            // Recalculate unread count
+            setUnreadCount(prev => Math.max(0, prev - (notifications.find(n => n.id === id)?.read ? 0 : 1)));
+        }
+    };
+
     const fetchNotifications = async () => {
         setLoading(true);
         try {
-            // 1. Fetch missing documents (Alerts)
-            // Limit to top 2 most recent missing docs per category to avoid clutter
-            const { data: missingKTP } = await supabase
-                .from('penduduk')
-                .select('nik, nama_lengkap, created_at')
-                .is('foto_dokumen', null)
-                .order('created_at', { ascending: false })
-                .limit(2);
+            // Fetch all data in parallel for better performance
+            const [
+                { data: missingKTP },
+                { data: missingKK },
+                { data: recentKTP },
+                { data: recentKK },
+                { data: recentAktaLahir },
+                { data: recentAktaKematian },
+                { data: recentAktaPerkawinan },
+                { data: recentAktaPerceraian }
+            ] = await Promise.all([
+                // 1. Alert: Missing KTP Docs
+                supabase
+                    .from('penduduk')
+                    .select('nik, nama_lengkap, created_at')
+                    .is('foto_dokumen', null)
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
-            const { data: missingKK } = await supabase
-                .from('kartu_keluarga')
-                .select('no_kk, kepala_keluarga, created_at')
-                .is('foto_dokumen', null)
-                .order('created_at', { ascending: false })
-                .limit(2);
+                // 2. Alert: Missing KK Docs
+                supabase
+                    .from('kartu_keluarga')
+                    .select('no_kk, kepala_keluarga, created_at')
+                    .is('foto_dokumen', null)
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
+                // 3. Info: Recent KTP
+                supabase
+                    .from('penduduk')
+                    .select('nama_lengkap, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
-            // 2. Fetch Recent Activities (Info)
-            const { data: recentKTP } = await supabase
-                .from('penduduk')
-                .select('nama_lengkap, created_at')
-                .order('created_at', { ascending: false })
-                .limit(2);
+                // 4. Info: Recent KK
+                supabase
+                    .from('kartu_keluarga')
+                    .select('kepala_keluarga, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
-            const { data: recentKK } = await supabase
-                .from('kartu_keluarga')
-                .select('kepala_keluarga, created_at')
-                .order('created_at', { ascending: false })
-                .limit(2);
+                // 5. Info: Recent Akta Lahir
+                supabase
+                    .from('akta_kelahiran')
+                    .select('nama, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
-            const { data: recentAktaLahir } = await supabase
-                .from('akta_kelahiran')
-                .select('nama, created_at')
-                .order('created_at', { ascending: false })
-                .limit(2);
+                // 6. Info: Recent Akta Kematian
+                supabase
+                    .from('akta_kematian')
+                    .select('nama, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2),
 
+                // 7. Info: Recent Akta Perkawinan
+                supabase
+                    .from('akta_perkawinan')
+                    .select('no_akta, nama_suami, nama_istri, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2),
+
+                // 8. Info: Recent Akta Perceraian
+                supabase
+                    .from('akta_perceraian')
+                    .select('no_akta, nama_suami, nama_istri, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(2)
+            ]);
 
             const newNotifications: NotificationItem[] = [];
+            const dismissedIds = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
 
-            // Helper to check read status from local storage
             const getReadStatus = (id: string) => {
                 const readIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
                 return readIds.includes(id);
             };
 
-            // Process Alerts
+            const isDismissed = (id: string) => dismissedIds.includes(id);
+
+            // Helper to add if not dismissed
+            const addNotif = (notif: NotificationItem) => {
+                if (!isDismissed(notif.id)) {
+                    newNotifications.push(notif);
+                }
+            };
+
             missingKTP?.forEach(item => {
                 const notifId = `ktp-missing-${item.nik}`;
-                newNotifications.push({
+                addNotif({
                     id: notifId,
                     type: 'alert',
                     title: 'Dokumen KTP Belum Lengkap',
@@ -97,7 +150,7 @@ export const NotificationDropdown = () => {
 
             missingKK?.forEach(item => {
                 const notifId = `kk-missing-${item.no_kk}`;
-                newNotifications.push({
+                addNotif({
                     id: notifId,
                     type: 'alert',
                     title: 'Dokumen KK Belum Lengkap',
@@ -107,10 +160,9 @@ export const NotificationDropdown = () => {
                 });
             });
 
-            // Process Recent Activity
             recentKTP?.forEach(item => {
                 const notifId = `ktp-new-${item.nama_lengkap}-${item.created_at}`;
-                newNotifications.push({
+                addNotif({
                     id: notifId,
                     type: 'success',
                     title: 'Input KTP Baru',
@@ -122,7 +174,7 @@ export const NotificationDropdown = () => {
 
             recentKK?.forEach(item => {
                 const notifId = `kk-new-${item.kepala_keluarga}-${item.created_at}`;
-                newNotifications.push({
+                addNotif({
                     id: notifId,
                     type: 'success',
                     title: 'Input KK Baru',
@@ -134,7 +186,7 @@ export const NotificationDropdown = () => {
 
             recentAktaLahir?.forEach(item => {
                 const notifId = `akta-lahir-new-${item.nama}-${item.created_at}`;
-                newNotifications.push({
+                addNotif({
                     id: notifId,
                     type: 'info',
                     title: 'Input Akta Kelahiran',
@@ -144,7 +196,42 @@ export const NotificationDropdown = () => {
                 });
             });
 
-            // Sort by date desc
+            recentAktaKematian?.forEach(item => {
+                const notifId = `akta-mati-new-${item.nama}-${item.created_at}`;
+                addNotif({
+                    id: notifId,
+                    type: 'info',
+                    title: 'Input Akta Kematian',
+                    message: `Akta Kematian a.n. ${item.nama} ditambahkan.`,
+                    timestamp: item.created_at,
+                    read: getReadStatus(notifId)
+                });
+            });
+
+            recentAktaPerkawinan?.forEach(item => {
+                const notifId = `akta-kawin-new-${item.no_akta}-${item.created_at}`;
+                addNotif({
+                    id: notifId,
+                    type: 'info',
+                    title: 'Input Akta Perkawinan',
+                    message: `Akta Perkawinan No. ${item.no_akta} ditambahkan.`,
+                    timestamp: item.created_at,
+                    read: getReadStatus(notifId)
+                });
+            });
+
+            recentAktaPerceraian?.forEach(item => {
+                const notifId = `akta-cerai-new-${item.no_akta}-${item.created_at}`;
+                addNotif({
+                    id: notifId,
+                    type: 'info',
+                    title: 'Input Akta Perceraian',
+                    message: `Akta Perceraian No. ${item.no_akta} ditambahkan.`,
+                    timestamp: item.created_at,
+                    read: getReadStatus(notifId)
+                });
+            });
+
             newNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
             setNotifications(newNotifications);
@@ -157,11 +244,25 @@ export const NotificationDropdown = () => {
         }
     };
 
-    // Fetch on mount and when opening
+    useEffect(() => {
+        const handleRefresh = () => {
+            console.log("Manual notification refresh triggered")
+            fetchNotifications()
+        }
+        window.addEventListener('trigger-notification-refresh', handleRefresh)
+        return () => window.removeEventListener('trigger-notification-refresh', handleRefresh)
+    }, [])
+
     useEffect(() => {
         fetchNotifications();
+        const channel = supabase
+            .channel('realtime-notifications')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'penduduk' }, fetchNotifications)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'kartu_keluarga' }, fetchNotifications)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'akta_kelahiran' }, fetchNotifications)
+            .subscribe()
+        return () => { supabase.removeChannel(channel) }
     }, []);
-
 
     const toggleDropdown = () => setIsOpen(!isOpen);
 
@@ -169,9 +270,7 @@ export const NotificationDropdown = () => {
         const allIds = notifications.map(n => n.id);
         const existingReadIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
         const updatedReadIds = Array.from(new Set([...existingReadIds, ...allIds]));
-
         localStorage.setItem('read_notifications', JSON.stringify(updatedReadIds));
-
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         setUnreadCount(0);
     };
@@ -209,9 +308,7 @@ export const NotificationDropdown = () => {
 
                     <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                         {loading ? (
-                            <div className="p-8 text-center text-gray-500 text-sm">
-                                Memuat notifikasi...
-                            </div>
+                            <div className="p-8 text-center text-gray-500 text-sm">Memuat notifikasi...</div>
                         ) : notifications.length === 0 ? (
                             <div className="p-8 text-center text-gray-500 flex flex-col items-center gap-2">
                                 <Bell className="h-8 w-8 text-gray-300" />
@@ -233,9 +330,18 @@ export const NotificationDropdown = () => {
                                                     <Info className="h-4 w-4" />}
                                         </div>
                                         <div className="flex-1 space-y-1">
-                                            <p className="text-sm font-medium text-gray-900 leading-tight">
-                                                {notification.title}
-                                            </p>
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-sm font-medium text-gray-900 leading-tight">
+                                                    {notification.title}
+                                                </p>
+                                                <button
+                                                    onClick={(e) => dismissNotification(e, notification.id)}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1 -mt-1 -mr-1"
+                                                    title="Hapus notifikasi"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                             <p className="text-xs text-gray-600 line-clamp-2">
                                                 {notification.message}
                                             </p>
@@ -250,11 +356,6 @@ export const NotificationDropdown = () => {
                                 ))}
                             </div>
                         )}
-                    </div>
-                    <div className="p-3 border-t border-gray-100 bg-gray-50/50 text-center">
-                        <button className="text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors">
-                            Lihat Semua Aktivitas
-                        </button>
                     </div>
                 </div>
             )}
