@@ -1,5 +1,5 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, Upload, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, Upload, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
@@ -54,6 +54,8 @@ export function AktaPerceraianForm() {
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaPerceraianData[]>([])
+    const [currentPage, setCurrentPage] = useState(0)
+    const pageSize = 10
     const [deleteId, setDeleteId] = useState<number | null>(null)
     const [editId, setEditId] = useState<number | null>(null)
     const [showForm, setShowForm] = useState(false)
@@ -69,6 +71,11 @@ export function AktaPerceraianForm() {
         keterangan: [] as string[],
         deret: [] as string[]
     })
+    const [totalItems, setTotalItems] = useState(0)
+
+    // Dropdown options state
+    const [allYears, setAllYears] = useState<string[]>([])
+    const [allDeret, setAllDeret] = useState<string[]>([])
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
@@ -76,42 +83,101 @@ export function AktaPerceraianForm() {
     const [selectedDeret, setSelectedDeret] = useState<string>("all")
     const [viewItem, setViewItem] = useState<AktaPerceraianData | null>(null)
 
-    const availableYears = useMemo(() => {
-        const years = dataList.map(item => new Date(item.tanggal_terbit).getFullYear().toString())
-        return [...new Set(years)].sort((a, b) => b.localeCompare(a))
-    }, [dataList])
-
-    const uniqueDeretList = useMemo(() => {
-        return [...new Set(dataList.map(item => item.deret).filter(Boolean))].sort()
-    }, [dataList])
-
-    const filteredData = dataList.filter(item => {
-        const matchesSearch = item.no_akta.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.nama_suami.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.nama_istri.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
-
-        const matchesYear = selectedYear === "all" || new Date(item.tanggal_terbit).getFullYear().toString() === selectedYear
-        const matchesDeret = selectedDeret === "all" || item.deret === selectedDeret
-
-        return matchesSearch && matchesYear && matchesDeret
-    })
-
+    // Initial Load - Metadata & First Page
     useEffect(() => {
-        fetchData()
+        fetchMetaData()
     }, [])
+
+    // Fetch filters metadata (Years & Deret) - Run once
+    const fetchMetaData = async () => {
+        const { data } = await supabase
+            .from("akta_perceraian")
+            .select("tanggal_terbit, deret")
+            .eq("is_deleted", false)
+
+        if (data) {
+            const years = data.map(item => new Date(item.tanggal_terbit).getFullYear().toString())
+            const uniqueYears = [...new Set(years)].sort((a, b) => b.localeCompare(a))
+            setAllYears(uniqueYears)
+
+            const uniqueDerets = [...new Set(data.map(item => item.deret).filter(Boolean))].sort()
+            setAllDeret(uniqueDerets as string[])
+        }
+    }
+
+    // Server-side pagination calculation
+    const totalPages = Math.ceil(totalItems / pageSize)
+
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(0)
+    }, [searchTerm, selectedYear, selectedDeret])
+
+    // Debounced Fetch
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            fetchData()
+        }, 500)
+        return () => clearTimeout(delayDebounceFn)
+    }, [currentPage, searchTerm, selectedYear, selectedDeret])
+
+    const getPageNumbers = () => {
+        const pages = []
+        if (totalPages <= 7) {
+            for (let i = 0; i < totalPages; i++) pages.push(i)
+        } else {
+            if (currentPage < 4) {
+                for (let i = 0; i < 5; i++) pages.push(i)
+                pages.push(-1)
+                pages.push(totalPages - 1)
+            } else if (currentPage > totalPages - 5) {
+                pages.push(0)
+                pages.push(-1)
+                for (let i = totalPages - 5; i < totalPages; i++) pages.push(i)
+            } else {
+                pages.push(0)
+                pages.push(-1)
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+                pages.push(-1)
+                pages.push(totalPages - 1)
+            }
+        }
+        return pages
+    }
 
     const fetchData = async () => {
         setIsFetching(true)
-        const { data, error } = await supabase
+        const from = currentPage * pageSize
+        const to = from + pageSize - 1
+
+        let query = supabase
             .from("akta_perceraian")
-            .select("*")
+            .select("*", { count: "exact" })
             .eq("is_deleted", false)
             .order("created_at", { ascending: false })
+            .range(from, to)
+
+        if (searchTerm) {
+            query = query.or(`no_akta.ilike.%${searchTerm}%,nama_suami.ilike.%${searchTerm}%,nama_istri.ilike.%${searchTerm}%,keterangan.ilike.%${searchTerm}%`)
+        }
+
+        if (selectedYear !== "all") {
+            const startDate = `${selectedYear}-01-01`
+            const endDate = `${selectedYear}-12-31`
+            query = query.gte("tanggal_terbit", startDate).lte("tanggal_terbit", endDate)
+        }
+
+        if (selectedDeret !== "all") {
+            query = query.eq("deret", selectedDeret)
+        }
+
+        const { data, count, error } = await query
 
         if (!error && data) {
             setDataList(data)
-            // Extract unique values for suggestions
+            setTotalItems(count || 0)
+
+            // Extract unique values for suggestions (optional)
             const uniqueKet = [...new Set(data.map(item => item.keterangan).filter(Boolean))] as string[]
             const uniqueDeret = [...new Set(data.map(item => item.deret).filter(Boolean))] as string[]
             setSuggestions({ keterangan: uniqueKet, deret: uniqueDeret })
@@ -367,7 +433,7 @@ export function AktaPerceraianForm() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua Tahun</SelectItem>
-                                {availableYears.map(year => (
+                                {allYears.map(year => (
                                     <SelectItem key={year} value={year}>{year}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -379,8 +445,8 @@ export function AktaPerceraianForm() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua Deret</SelectItem>
-                                {uniqueDeretList.map(d => (
-                                    <SelectItem key={d as string} value={d as string}>{d}</SelectItem>
+                                {allDeret.map(d => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -497,8 +563,8 @@ export function AktaPerceraianForm() {
                                 <tr className="border-b text-left">
                                     <th className="p-3 font-medium">No. Akta</th>
                                     <th className="p-3 font-medium">Suami & Istri</th>
-                                    <th className="p-3 font-medium hidden md:table-cell">Deret</th>
-                                    <th className="p-3 font-medium hidden md:table-cell">Keterangan</th>
+                                    <th className="p-3 font-medium">Deret</th>
+                                    <th className="p-3 font-medium">Keterangan</th>
                                     <th className="p-3 font-medium">Tgl Terbit</th>
                                     <th className="p-3 font-medium text-center">Aksi</th>
                                 </tr>
@@ -513,18 +579,18 @@ export function AktaPerceraianForm() {
                                             </div>
                                         </td>
                                     </tr>
-                                ) : filteredData.length === 0 ? (
+                                ) : dataList.length === 0 ? (
                                     <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Belum ada data.</td></tr>
                                 ) : (
-                                    filteredData.map((item) => (
+                                    dataList.map((item) => (
                                         <tr key={item.id} className="border-b hover:bg-muted/50">
                                             <td className="p-3">{item.no_akta}</td>
                                             <td className="p-3">
                                                 <div className="font-medium text-purple-700">{item.nama_suami}</div>
                                                 <div className="text-purple-600">& {item.nama_istri}</div>
                                             </td>
-                                            <td className="p-3 font-medium text-blue-600 hidden md:table-cell">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px] hidden md:table-cell">{item.keterangan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3">{new Date(item.tanggal_terbit).toLocaleDateString("id-ID")}</td>
                                             <td className="p-3 text-center space-x-2">
                                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setViewItem(item)}>
@@ -544,6 +610,46 @@ export function AktaPerceraianForm() {
                         </table>
                     </div>
                 </CardContent>
+                {dataList.length > 0 && (
+                    <div className="p-4 border-t">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="text-sm text-muted-foreground order-2 sm:order-1">
+                                Menampilkan halaman {currentPage + 1} dari {totalPages}
+                            </div>
+                            <div className="flex items-center gap-1 order-1 sm:order-2">
+                                <Button
+                                    variant="outline" size="icon"
+                                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                    disabled={currentPage === 0}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {getPageNumbers().map((pageNum, idx) => (
+                                    pageNum === -1 ? (
+                                        <span key={`sep-${idx}`} className="mx-1 text-muted-foreground">...</span>
+                                    ) : (
+                                        <Button
+                                            key={pageNum}
+                                            variant={currentPage === pageNum ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'pointer-events-none' : ''}`}
+                                        >
+                                            {pageNum + 1}
+                                        </Button>
+                                    )
+                                ))}
+                                <Button
+                                    variant="outline" size="icon"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                                    disabled={currentPage >= totalPages - 1}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Card>
         </div>
     )

@@ -1,5 +1,5 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
@@ -47,6 +47,9 @@ export function AktaForm() {
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaData[]>([])
+    const [totalItems, setTotalItems] = useState(0)
+    const [currentPage, setCurrentPage] = useState(0)
+    const pageSize = 10
     const [deleteId, setDeleteId] = useState<number | null>(null)
     const [editId, setEditId] = useState<number | null>(null)
     const [showForm, setShowForm] = useState(false)
@@ -65,36 +68,79 @@ export function AktaForm() {
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<AktaData | null>(null)
 
-    // Get unique Deret values for filter dropdown
-    const uniqueDeret = Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
+    // Get unique Deret values for filter dropdown (Server-side simplified)
+    const uniqueDeret = useMemo(() => {
+        return Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
+    }, [dataList])
 
-    const filteredData = dataList.filter(item => {
-        const matchesSearchTerm =
-            (item.no_akta && item.no_akta.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            item.nama_anak.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.nama_ayah.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.nama_ibu.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.keterangan && item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()))
+    // Server-side pagination calculation
+    const totalPages = Math.ceil(totalItems / pageSize)
 
-        const matchesDeret = searchDeret ? item.deret === searchDeret : true
-
-        return matchesSearchTerm && matchesDeret
-    })
-
+    // Reset to first page when search changes
     useEffect(() => {
-        fetchData()
-    }, [])
+        setCurrentPage(0)
+    }, [searchTerm, searchDeret])
+
+    // Fetch data when params change
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            fetchData()
+        }, 500)
+
+        return () => clearTimeout(delayDebounceFn)
+    }, [currentPage, searchTerm, searchDeret])
+
+    const getPageNumbers = () => {
+        const pages = []
+        if (totalPages <= 7) {
+            for (let i = 0; i < totalPages; i++) pages.push(i)
+        } else {
+            if (currentPage < 4) {
+                for (let i = 0; i < 5; i++) pages.push(i)
+                pages.push(-1)
+                pages.push(totalPages - 1)
+            } else if (currentPage > totalPages - 5) {
+                pages.push(0)
+                pages.push(-1)
+                for (let i = totalPages - 5; i < totalPages; i++) pages.push(i)
+            } else {
+                pages.push(0)
+                pages.push(-1)
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+                pages.push(-1)
+                pages.push(totalPages - 1)
+            }
+        }
+        return pages
+    }
+
+
 
     const fetchData = async () => {
         setIsFetching(true)
-        const { data, error } = await supabase
+        const from = currentPage * pageSize
+        const to = from + pageSize - 1
+
+        let query = supabase
             .from("akta_kelahiran")
-            .select("*")
+            .select("*", { count: "exact" })
             .eq("is_deleted", false)
             .order("created_at", { ascending: false })
+            .range(from, to)
+
+        if (searchTerm) {
+            query = query.or(`no_akta.ilike.%${searchTerm}%,nama_anak.ilike.%${searchTerm}%,nama_ayah.ilike.%${searchTerm}%,nama_ibu.ilike.%${searchTerm}%`)
+        }
+
+        if (searchDeret) {
+            query = query.eq("deret", searchDeret)
+        }
+
+        const { data, count, error } = await query
 
         if (!error && data) {
             setDataList(data)
+            setTotalItems(count || 0)
         }
         setIsFetching(false)
     }
@@ -518,7 +564,7 @@ export function AktaForm() {
             <Card>
                 <CardHeader>
                     <CardTitle>Daftar Akta Kelahiran Tersimpan</CardTitle>
-                    <CardDescription>Total: {dataList.length} data {searchTerm && `(Ditemukan: ${filteredData.length})`}</CardDescription>
+                    <CardDescription>Total: {totalItems} data {searchTerm && `(Pencarian)`}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isFetching ? (
@@ -526,7 +572,7 @@ export function AktaForm() {
                             <ThreeBodyLoader size={45} color="#F59E0B" />
                             <p className="text-sm font-medium text-orange-600/80 animate-pulse">Memuat data Akta Kelahiran...</p>
                         </div>
-                    ) : filteredData.length === 0 ? (
+                    ) : dataList.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             {searchTerm ? "Tidak ada data yang cocok dengan pencarian." : "Belum ada data Akta Kelahiran. Klik 'Tambah Data Akta' untuk menambahkan."}
                         </div>
@@ -537,18 +583,18 @@ export function AktaForm() {
                                     <tr className="border-b bg-muted/50">
                                         <th className="text-left p-3 font-medium">No. Akta</th>
                                         <th className="text-left p-3 font-medium">Nama Anak</th>
-                                        <th className="text-left p-3 font-medium hidden md:table-cell">Deret</th>
-                                        <th className="text-left p-3 font-medium hidden md:table-cell">Keterangan</th>
+                                        <th className="text-left p-3 font-medium">Deret</th>
+                                        <th className="text-left p-3 font-medium">Keterangan</th>
                                         <th className="text-center p-3 font-medium">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredData.map((item) => (
+                                    {dataList.map((item) => (
                                         <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
                                             <td className="p-3 font-mono text-xs">{item.no_akta || "-"}</td>
                                             <td className="p-3">{item.nama_anak}</td>
-                                            <td className="p-3 font-medium text-blue-600 hidden md:table-cell">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px] hidden md:table-cell">{item.keterangan || "-"}</td>
+                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
+                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
                                             <td className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"
@@ -580,6 +626,45 @@ export function AktaForm() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+
+                    {dataList.length > 0 && (
+                        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t gap-4">
+                            <div className="text-sm text-muted-foreground order-2 sm:order-1">
+                                Menampilkan halaman {currentPage + 1} dari {totalPages}
+                            </div>
+                            <div className="flex items-center gap-1 order-1 sm:order-2">
+                                <Button
+                                    variant="outline" size="icon"
+                                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                    disabled={currentPage === 0}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {getPageNumbers().map((pageNum, idx) => (
+                                    pageNum === -1 ? (
+                                        <span key={`sep-${idx}`} className="mx-1 text-muted-foreground">...</span>
+                                    ) : (
+                                        <Button
+                                            key={pageNum}
+                                            variant={currentPage === pageNum ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'pointer-events-none' : ''}`}
+                                        >
+                                            {pageNum + 1}
+                                        </Button>
+                                    )
+                                ))}
+                                <Button
+                                    variant="outline" size="icon"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                                    disabled={currentPage >= totalPages - 1}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </CardContent>
