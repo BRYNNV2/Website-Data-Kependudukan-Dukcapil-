@@ -11,6 +11,7 @@ import { Plus, Trash2, X, FileDown, Search, Eye, ChevronLeft, ChevronRight } fro
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
+import { compressImage } from "@/lib/imageCompression"
 import {
     Dialog,
     DialogContent,
@@ -67,6 +68,8 @@ export function AktaForm() {
     const [searchTerm, setSearchTerm] = useState("")
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<AktaData | null>(null)
+    const [noAktaError, setNoAktaError] = useState<string | null>(null)
+    const [isCheckingNoAkta, setIsCheckingNoAkta] = useState(false)
 
     // Get unique Deret values for filter dropdown (Server-side simplified)
     const uniqueDeret = useMemo(() => {
@@ -89,6 +92,52 @@ export function AktaForm() {
 
         return () => clearTimeout(delayDebounceFn)
     }, [currentPage, searchTerm, searchDeret])
+
+
+    // Real-time No. Akta Validation
+    useEffect(() => {
+        const checkNoAktaAvailability = async () => {
+            if (!formData.no_akta || formData.no_akta.length < 3) {
+                setNoAktaError(null)
+                return
+            }
+
+            setIsCheckingNoAkta(true)
+            try {
+                // Check if No Akta exists in database
+                let query = supabase
+                    .from('akta_kelahiran')
+                    .select('id, no_akta')
+                    .eq('no_akta', formData.no_akta)
+                    .eq('is_deleted', false)
+
+                // If editing, allow same No Akta if it belongs to current record
+                if (editId) {
+                    query = query.neq('id', editId)
+                }
+
+                const { data, error } = await query
+
+                if (error) throw error
+
+                if (data && data.length > 0) {
+                    setNoAktaError("Nomor Akta sudah terdaftar!")
+                } else {
+                    setNoAktaError(null)
+                }
+            } catch (error) {
+                console.error("Error checking No Akta:", error)
+            } finally {
+                setIsCheckingNoAkta(false)
+            }
+        }
+
+        const timeoutId = setTimeout(() => {
+            checkNoAktaAvailability()
+        }, 500) // Debounce 500ms
+
+        return () => clearTimeout(timeoutId)
+    }, [formData.no_akta, editId])
 
     const getPageNumbers = () => {
         const pages = []
@@ -146,7 +195,18 @@ export function AktaForm() {
     }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData({ ...formData, [e.target.id]: e.target.value })
+        let value = e.target.value
+
+        // Khusus No Akta: Angka, Huruf, Strip (-) diperbolehkan | Auto Uppercase
+        if (e.target.id === 'no_akta') {
+            value = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase()
+        }
+
+        setFormData({ ...formData, [e.target.id]: value })
+
+        if (e.target.id === 'no_akta') {
+            setNoAktaError(null) // Reset temporary error while typing
+        }
     }
 
     const handleSubmit = async () => {
@@ -168,11 +228,12 @@ export function AktaForm() {
             let photoUrl = currentImage
 
             if (selectedFile) {
-                const fileExt = selectedFile.name.split('.').pop()
+                const compressedFile = await compressImage(selectedFile) // Compress here
+                const fileExt = compressedFile.name.split('.').pop()
                 const fileName = `akta/${Date.now()}.${fileExt}`
                 const { error: uploadError } = await supabase.storage
                     .from('population_docs')
-                    .upload(fileName, selectedFile)
+                    .upload(fileName, compressedFile)
 
                 if (uploadError) {
                     throw new Error("Gagal upload foto: " + uploadError.message)
@@ -485,7 +546,16 @@ export function AktaForm() {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="no_akta">Nomor Akta (jika ada)</Label>
-                            <Input id="no_akta" value={formData.no_akta} onChange={handleChange} placeholder="Nomor Registrasi Akta" />
+                            <Input
+                                id="no_akta"
+                                value={formData.no_akta}
+                                onChange={handleChange}
+                                placeholder="Nomor Registrasi Akta"
+                                className={noAktaError ? "border-red-500 focus-visible:ring-red-500" : (formData.no_akta.length > 2 && !isCheckingNoAkta ? "border-green-500 focus-visible:ring-green-500" : "")}
+                            />
+                            {isCheckingNoAkta && <p className="text-xs text-muted-foreground mt-1 animate-pulse">Memeriksa ketersediaan No. Akta...</p>}
+                            {!isCheckingNoAkta && noAktaError && <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1"><X className="h-3 w-3" /> {noAktaError}</p>}
+                            {!isCheckingNoAkta && !noAktaError && formData.no_akta.length > 2 && <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">✓ Nomor Akta tersedia</p>}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="nama_anak">Nama Anak</Label>
@@ -555,7 +625,9 @@ export function AktaForm() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button onClick={handleSubmit} disabled={loading}>{loading ? "Menyimpan..." : (editId ? "Simpan Perubahan" : "Simpan Data Akta")}</Button>
+                        <Button onClick={handleSubmit} disabled={loading || isCheckingNoAkta || !!noAktaError} className={noAktaError ? "opacity-50 cursor-not-allowed" : ""}>
+                            {loading ? "Menyimpan..." : (editId ? "Simpan Perubahan" : "Simpan Data Akta")}
+                        </Button>
                     </CardFooter>
                 </Card>
             )}

@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner"
 import Settings from "@/pages/Settings"
 import RecycleBin from "@/pages/RecycleBin"
 import { ThemeProvider } from "@/components/theme-provider"
+import { NetworkStatus } from "@/components/NetworkStatus"
 
 import ResetPassword from "@/pages/ResetPassword"
 
@@ -45,6 +46,7 @@ function App() {
           </Route>
         </Routes>
         <Toaster position="top-center" />
+        <NetworkStatus />
       </Router>
     </ThemeProvider>
   )

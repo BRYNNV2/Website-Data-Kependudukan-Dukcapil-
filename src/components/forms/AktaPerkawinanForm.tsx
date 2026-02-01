@@ -11,6 +11,7 @@ import { Plus, Trash2, X, FileDown, Search, Eye, Upload, AlertTriangle, Loader2,
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
+import { compressImage } from "@/lib/imageCompression"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
     Dialog,
@@ -206,11 +207,12 @@ export function AktaPerkawinanForm() {
             let photoUrl = currentImage
 
             if (selectedFile) {
-                const fileExt = selectedFile.name.split(".").pop()
+                const compressedFile = await compressImage(selectedFile) // Compress here
+                const fileExt = compressedFile.name.split(".").pop()
                 const fileName = `akta_perkawinan_${Date.now()}.${fileExt}`
                 const { error: uploadError } = await supabase.storage
                     .from("population_docs")
-                    .upload(fileName, selectedFile)
+                    .upload(fileName, compressedFile)
 
                 if (uploadError) throw uploadError
 

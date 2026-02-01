@@ -93,7 +93,7 @@ export const NotificationDropdown = () => {
                 // 5. Info: Recent Akta Lahir
                 supabase
                     .from('akta_kelahiran')
-                    .select('nama, created_at')
+                    .select('nama_anak, created_at')
                     .order('created_at', { ascending: false })
                     .limit(2),
 
@@ -185,12 +185,12 @@ export const NotificationDropdown = () => {
             });
 
             recentAktaLahir?.forEach(item => {
-                const notifId = `akta-lahir-new-${item.nama}-${item.created_at}`;
+                const notifId = `akta-lahir-new-${item.nama_anak}-${item.created_at}`;
                 addNotif({
                     id: notifId,
                     type: 'info',
                     title: 'Input Akta Kelahiran',
-                    message: `Akta Kelahiran a.n. ${item.nama} diterbitkan.`,
+                    message: `Akta Kelahiran a.n. ${item.nama_anak} diterbitkan.`,
                     timestamp: item.created_at,
                     read: getReadStatus(notifId)
                 });
