@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX, Trash2 } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX, Trash2, Archive } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -224,6 +224,9 @@ export default function Layout({ children }: LayoutProps) {
                             </div>
                         </div>
                     </div>
+
+                    {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">ARSIP</p>}
+                    <NavItem to="/rekap-arsip" icon={Archive} label="Rekap Arsip" />
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
                     <div id="nav-activity-log">

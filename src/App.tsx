@@ -13,6 +13,7 @@ import ActivityLog from "@/pages/ActivityLog"
 import { Toaster } from "@/components/ui/sonner"
 
 import Settings from "@/pages/Settings"
+import RekapArsip from "@/pages/RekapArsip"
 import RecycleBin from "@/pages/RecycleBin"
 import { ThemeProvider } from "@/components/theme-provider"
 import { NetworkStatus } from "@/components/NetworkStatus"
@@ -41,6 +42,7 @@ function App() {
             <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
             <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />
             <Route path="/activity-log" element={<ActivityLog />} />
+            <Route path="/rekap-arsip" element={<RekapArsip />} />
             <Route path="/recycle-bin" element={<RecycleBin />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
