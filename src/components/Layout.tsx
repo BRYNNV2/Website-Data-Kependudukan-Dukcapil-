@@ -27,6 +27,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [inputDataOpen, setInputDataOpen] = useState(false)
+    const [rekapArsipOpen, setRekapArsipOpen] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
     const [userName, setUserName] = useState("Admin Petugas")
@@ -60,14 +61,18 @@ export default function Layout({ children }: LayoutProps) {
     }, [])
 
     const isActive = (path: string) => location.pathname === path
-
-
     const isInputDataActive = () => location.pathname.startsWith("/input-data")
 
-    // Auto-expand Input Data menu if we're on any input-data page
+
+    const isRekapArsipActive = () => location.pathname.startsWith("/rekap-arsip")
+
+    // Auto-expand Input Data & Rekap Arsip menu
     useEffect(() => {
         if (isInputDataActive()) {
             setInputDataOpen(true)
+        }
+        if (isRekapArsipActive()) {
+            setRekapArsipOpen(true)
         }
     }, [location.pathname])
 
@@ -226,7 +231,43 @@ export default function Layout({ children }: LayoutProps) {
                     </div>
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">ARSIP</p>}
-                    <NavItem to="/rekap-arsip" icon={Archive} label="Rekap Arsip" />
+                    {/* Rekap Arsip - Expandable Menu */}
+                    <div id="nav-rekap-arsip">
+                        <button
+                            onClick={() => {
+                                if (isCollapsed) setIsCollapsed(false);
+                                setRekapArsipOpen(!rekapArsipOpen)
+                            }}
+                            title={isCollapsed ? "Rekap Arsip" : ""}
+                            className={cn(
+                                "w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md transition-all",
+                                isCollapsed && "justify-center px-2",
+                                isRekapArsipActive()
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Archive className="h-4 w-4 flex-shrink-0" />
+                                {!isCollapsed && <span>Rekap Arsip</span>}
+                            </div>
+                            {!isCollapsed && <ChevronDown className={cn(
+                                "h-4 w-4 transition-transform duration-200",
+                                rekapArsipOpen ? "rotate-180" : ""
+                            )} />}
+                        </button>
+
+                        {/* Sub-menu */}
+                        <div className={cn(
+                            "overflow-hidden transition-all duration-200",
+                            rekapArsipOpen && !isCollapsed ? "max-h-[300px] mt-1" : "max-h-0"
+                        )}>
+                            <div className="space-y-1">
+                                <SubNavItem to="/rekap-arsip/kk" icon={Users} label="Arsip KK" />
+                                {/* Future submenus can be added here */}
+                            </div>
+                        </div>
+                    </div>
 
                     {!isCollapsed && <p className="px-2 text-xs font-semibold text-muted-foreground mb-2 mt-6 transition-all">LAINNYA</p>}
                     <div id="nav-activity-log">

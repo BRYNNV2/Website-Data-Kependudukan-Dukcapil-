@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
+import { useParams } from "react-router-dom"
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
@@ -8,7 +10,7 @@ import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Pencil, Trash2, FileSpreadsheet, Archive, Loader2, FileDown, ChevronLeft, ChevronRight, Filter } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, FileSpreadsheet, Archive, FileDown, ChevronLeft, ChevronRight, Filter } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import * as XLSX from 'xlsx'
 import jsPDF from "jspdf"
@@ -24,6 +26,21 @@ interface RekapData {
 }
 
 export default function RekapArsip() {
+    const { category } = useParams<{ category: string }>()
+
+    const categoryMap: Record<string, string> = {
+        "kk": "Kartu Keluarga",
+        "ktp": "KTP Elektronik",
+        "akta-kelahiran": "Akta Kelahiran",
+        "akta-kematian": "Akta Kematian",
+        "akta-perkawinan": "Akta Perkawinan",
+        "akta-perceraian": "Akta Perceraian",
+        "sk-pindah": "Surat Pindah",
+        "sk-datang": "Surat Datang"
+    }
+
+    const activeCategory = category ? categoryMap[category] : null
+
     const [loading, setLoading] = useState(false)
     const [fetching, setFetching] = useState(true)
     const [dataList, setDataList] = useState<RekapData[]>([])
@@ -32,7 +49,7 @@ export default function RekapArsip() {
     // Pagination & Filter States
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage] = useState(10)
-    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
+    const [selectedYear, setSelectedYear] = useState<string>("ALL")
     const [selectedMonth, setSelectedMonth] = useState<string>("ALL") // New State
     const [importYear, setImportYear] = useState<string>(new Date().getFullYear().toString())
 
@@ -89,9 +106,15 @@ export default function RekapArsip() {
             // Gunakan ID locale short names: Jan, Feb, Mar, Apr, Mei, Jun, Jul, Agu, Sep, Okt, Nov, Des
             const matchesMonth = selectedMonth === "ALL" || item.waktu.toLowerCase().includes(selectedMonth.toLowerCase())
 
-            return matchesSearch && matchesYear && matchesMonth
+            // Filter Kategori (URL Param)
+            const matchesCategory = !activeCategory ||
+                item.jenis_arsip.toLowerCase().includes(activeCategory.toLowerCase()) ||
+                (category === 'kk' && item.jenis_arsip.toLowerCase().includes('kk')) || // Fallback "KK"
+                (category === 'ktp' && item.jenis_arsip.toLowerCase().includes('ktp'))  // Fallback "KTP"
+
+            return matchesSearch && matchesYear && matchesMonth && matchesCategory
         })
-    }, [dataList, searchTerm, selectedYear, selectedMonth])
+    }, [dataList, searchTerm, selectedYear, selectedMonth, activeCategory])
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredData.length / itemsPerPage)
@@ -325,9 +348,9 @@ export default function RekapArsip() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <Archive className="h-8 w-8 text-indigo-600" />
-                        Rekap Jumlah Arsip
+                        Rekap Jumlah Arsip {activeCategory && `- ${activeCategory}`}
                     </h1>
-                    <p className="text-muted-foreground">Manajemen data rekapitulasi arsip fisik</p>
+                    <p className="text-muted-foreground">Manajemen data rekapitulasi arsip fisik {activeCategory?.toLowerCase()}</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -368,7 +391,11 @@ export default function RekapArsip() {
                         Export PDF
                     </Button>
 
-                    <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }} className="h-12 px-4 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm">
+                    <Button size="sm" onClick={() => {
+                        resetForm();
+                        if (activeCategory) setFormData(prev => ({ ...prev, jenis_arsip: activeCategory }));
+                        setShowForm(true);
+                    }} className="h-12 px-4 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-sm">
                         <Plus className="h-4 w-4" />
                         Tambah Data
                     </Button>
@@ -436,9 +463,13 @@ export default function RekapArsip() {
                             <TableBody>
                                 {fetching ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                                            Memuat data...
+                                        <TableCell colSpan={6} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-4 py-8">
+                                                <ThreeBodyLoader size={45} color="#4F46E5" />
+                                                <p className="text-sm font-medium text-indigo-600/80 animate-pulse">
+                                                    Memuat data Rekap Arsip...
+                                                </p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : paginatedData.length === 0 ? (
@@ -531,7 +562,9 @@ export default function RekapArsip() {
                             <Input
                                 placeholder="Contoh: AKTA KELAHIRAN LU"
                                 value={formData.jenis_arsip}
-                                onChange={e => setFormData({ ...formData, jenis_arsip: e.target.value.toUpperCase() })}
+                                onChange={e => !activeCategory && setFormData({ ...formData, jenis_arsip: e.target.value.toUpperCase() })}
+                                disabled={!!activeCategory}
+                                className={activeCategory ? "bg-slate-100 text-slate-500 font-medium" : ""}
                             />
                         </div>
                         <div className="space-y-2">
