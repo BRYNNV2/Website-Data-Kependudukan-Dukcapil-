@@ -21,6 +21,10 @@ interface RekapData {
     jenis_arsip: string
     waktu: string
     jumlah_berkas: number
+    jumlah_akta?: number
+    jumlah_kutipan?: number
+    jumlah_lapor?: number
+    no_daftar?: string
     keterangan: string
     created_at: string
 }
@@ -31,7 +35,9 @@ export default function RekapArsip() {
     const categoryMap: Record<string, string> = {
         "kk": "Kartu Keluarga",
         "ktp": "KTP Elektronik",
-        "akta-kelahiran": "Akta Kelahiran",
+        "akta-kelahiran-lu": "Akta Kelahiran LU",
+        "akta-kelahiran-lt": "Akta Kelahiran LT",
+        "akta-kelahiran-kutipan-kedua": "Kutipan II Kelahiran",
         "akta-kematian": "Akta Kematian",
         "akta-perkawinan": "Akta Perkawinan",
         "akta-perceraian": "Akta Perceraian",
@@ -62,6 +68,10 @@ export default function RekapArsip() {
         jenis_arsip: "",
         waktu: "",
         jumlah_berkas: "",
+        jumlah_akta: "",
+        jumlah_kutipan: "",
+        jumlah_lapor: "",
+        no_daftar: "",
         keterangan: ""
     })
 
@@ -141,6 +151,10 @@ export default function RekapArsip() {
                 jenis_arsip: formData.jenis_arsip,
                 waktu: formData.waktu,
                 jumlah_berkas: parseInt(formData.jumlah_berkas),
+                jumlah_akta: parseInt(String(formData.jumlah_akta)) || 0,
+                jumlah_kutipan: parseInt(String(formData.jumlah_kutipan)) || 0,
+                jumlah_lapor: parseInt(String(formData.jumlah_lapor)) || 0,
+                no_daftar: formData.no_daftar || "",
                 keterangan: formData.keterangan || ""
             }
 
@@ -179,7 +193,16 @@ export default function RekapArsip() {
     }
 
     const resetForm = () => {
-        setFormData({ jenis_arsip: "", waktu: "", jumlah_berkas: "", keterangan: "" })
+        setFormData({
+            jenis_arsip: activeCategory ? activeCategory.toUpperCase() : "",
+            waktu: "",
+            jumlah_berkas: "",
+            jumlah_akta: "",
+            jumlah_kutipan: "",
+            jumlah_lapor: "",
+            no_daftar: "",
+            keterangan: ""
+        })
         setEditId(null)
     }
 
@@ -188,6 +211,10 @@ export default function RekapArsip() {
             jenis_arsip: item.jenis_arsip,
             waktu: item.waktu,
             jumlah_berkas: item.jumlah_berkas.toString(),
+            jumlah_akta: item.jumlah_akta?.toString() || "",
+            jumlah_kutipan: item.jumlah_kutipan?.toString() || "",
+            jumlah_lapor: item.jumlah_lapor?.toString() || "",
+            no_daftar: item.no_daftar || "",
             keterangan: item.keterangan || ""
         })
         setEditId(item.id)
@@ -226,35 +253,60 @@ export default function RekapArsip() {
                 const headerRow = rawRows[headerIndex].map(h => String(h).trim().toUpperCase().replace(/[\r\n]+/g, " "))
                 const idxJenis = headerRow.findIndex(h => h.includes("JENIS") && h.includes("ARSIP"))
                 const idxWaktu = headerRow.findIndex(h => h.includes("WAKTU"))
-                const idxJumlah = headerRow.findIndex(h => h.includes("JUMLAH"))
+
+                // Kematian Specific
+                const idxAkta = headerRow.findIndex(h => h.includes("JUMLAH AKTA KEMATIAN"))
+                const idxKutipan = headerRow.findIndex(h => h.includes("JUMLAH KUTIPAN KEDUA"))
+                const idxLapor = headerRow.findIndex(h => h.includes("JUMLAH LAPOR KEMATIAN"))
+
+                // Kutipan II Kelahiran Specific
+                const idxNoDaftar = headerRow.findIndex(h => h.includes("NOMOR DAFTAR"))
+
+                // General Total
+                let idxJumlah = headerRow.findIndex(h => h.includes("JUMLAH BERKAS") || h.includes("TOTAL BERKAS"))
+
+                // Fallback for generic files
+                if (idxJumlah === -1 && idxAkta === -1) {
+                    idxJumlah = headerRow.findIndex(h => h.includes("JUMLAH"))
+                }
+
                 const idxKet = headerRow.findIndex(h => h.includes("KETERANGAN"))
 
-                if (idxJenis === -1 || idxJumlah === -1) {
+                if (idxJenis === -1 || (idxJumlah === -1 && idxAkta === -1)) {
                     toast.error("Kolom Wajib tidak lengkap")
                     return
                 }
 
-                // Helper Format Tanggal "01 Jul 2023" (Tahun Sesuai Pilihan)
+                // Helper Format Tanggal "01 Jul 2023" atau "Januari 2024" (Tahun Sesuai Pilihan)
                 const formatWaktuWithYear = (serial: any, targetYear: string) => {
                     if (!serial) return ""
 
-                    let day = "01"
-                    let month = "Jan"
+                    if (typeof serial === 'string') {
+                        const trimmed = serial.trim()
+                        // Check if it matches a month name (e.g., "JANUARI")
+                        const monthNames = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"]
+                        if (monthNames.some(m => trimmed.toUpperCase().includes(m))) {
+                            return `${trimmed} ${targetYear}`
+                        }
+
+                        // Coba ambil bagian depan string tanggal (misal "01-Jul")
+                        const parts = trimmed.split(/[- ]/)
+                        if (parts.length >= 2) {
+                            const day = parts[0].padStart(2, '0')
+                            const month = parts[1]
+                            return `${day} ${month} ${targetYear}`
+                        }
+                        return `${trimmed} ${targetYear}`
+                    }
 
                     if (typeof serial === 'number') {
                         const date_info = new Date(Math.floor(serial - 25569) * 86400 * 1000)
-                        day = date_info.getDate().toString().padStart(2, '0')
-                        month = date_info.toLocaleString('id-ID', { month: 'short' })
-                    } else if (typeof serial === 'string') {
-                        // Coba ambil bagian depan string tanggal (misal "01-Jul")
-                        const parts = serial.split(/[- ]/)
-                        if (parts.length >= 2) {
-                            day = parts[0].padStart(2, '0')
-                            month = parts[1] // Harusnya nama bulan
-                        }
+                        const day = date_info.getDate().toString().padStart(2, '0')
+                        const month = date_info.toLocaleString('id-ID', { month: 'short' })
+                        return `${day} ${month} ${targetYear}`
                     }
 
-                    return `${day} ${month} ${targetYear}`
+                    return `- ${targetYear}`
                 }
 
                 const mappedData: any[] = []
@@ -266,13 +318,24 @@ export default function RekapArsip() {
                     const jenisVal = row[idxJenis]
                     if (!jenisVal || String(jenisVal).toUpperCase().includes("JUMLAH")) continue
 
-                    const jumlahParsed = parseInt(String(row[idxJumlah] || '0').replace(/[^0-9]/g, '')) || 0
-                    if (jumlahParsed === 0 && !row[idxKet]) continue // Skip kalau jumlah 0 dan gak ada ket
+                    const jumlahParsed = idxJumlah !== -1 ? (parseInt(String(row[idxJumlah] || '0').replace(/[^0-9]/g, '')) || 0) : 0
+
+                    const valAkta = idxAkta !== -1 ? (parseInt(String(row[idxAkta] || '0').replace(/[^0-9]/g, '')) || 0) : 0
+                    const valKutipan = idxKutipan !== -1 ? (parseInt(String(row[idxKutipan] || '0').replace(/[^0-9]/g, '')) || 0) : 0
+                    const valLapor = idxLapor !== -1 ? (parseInt(String(row[idxLapor] || '0').replace(/[^0-9]/g, '')) || 0) : 0
+
+                    const finalTotal = (jumlahParsed > 0) ? jumlahParsed : (valAkta + valKutipan + valLapor)
+
+                    if (finalTotal === 0 && !row[idxKet]) continue // Skip kalau jumlah 0 dan gak ada ket
 
                     mappedData.push({
                         jenis_arsip: String(jenisVal).trim().toUpperCase(),
-                        waktu: idxWaktu !== -1 ? formatWaktuWithYear(row[idxWaktu], importYear) : `- ${importYear}`, // Pakai TAHUN dari Dropdown
-                        jumlah_berkas: jumlahParsed,
+                        waktu: idxWaktu !== -1 ? formatWaktuWithYear(row[idxWaktu], importYear) : `- ${importYear}`,
+                        jumlah_berkas: finalTotal,
+                        jumlah_akta: valAkta,
+                        jumlah_kutipan: valKutipan,
+                        jumlah_lapor: valLapor,
+                        no_daftar: idxNoDaftar !== -1 ? String(row[idxNoDaftar] || "").trim() : "",
                         keterangan: idxKet !== -1 ? String(row[idxKet] || "").trim() : ""
                     })
                 }
@@ -305,7 +368,8 @@ export default function RekapArsip() {
         doc.setFontSize(10)
         doc.text(`Total Arsip: ${filteredData.reduce((acc, curr) => acc + (curr.jumlah_berkas || 0), 0)} berkas`, 14, 22)
 
-        const tableBody = filteredData.map((item, index) => [
+        let head = [['No', 'Jenis Arsip', 'Waktu', 'Jml', 'Keterangan']]
+        let body = filteredData.map((item, index) => [
             index + 1,
             item.jenis_arsip,
             item.waktu,
@@ -313,9 +377,33 @@ export default function RekapArsip() {
             item.keterangan || '-'
         ])
 
+        if (activeCategory === 'Akta Kematian') {
+            head = [['No', 'Jenis', 'Waktu', 'Akta', 'Kutipan II', 'Lapor', 'Total', 'Ket']]
+            body = filteredData.map((item, index) => [
+                index + 1,
+                item.jenis_arsip,
+                item.waktu,
+                item.jumlah_akta || 0,
+                item.jumlah_kutipan || 0,
+                item.jumlah_lapor || 0,
+                item.jumlah_berkas,
+                item.keterangan || '-'
+            ])
+        } else if (activeCategory?.includes('Kutipan II')) {
+            head = [['No', 'Jenis', 'Waktu', 'No Daftar', 'Jml', 'Ket']]
+            body = filteredData.map((item, index) => [
+                index + 1,
+                item.jenis_arsip,
+                item.waktu,
+                item.no_daftar || '-',
+                item.jumlah_berkas,
+                item.keterangan || '-'
+            ])
+        }
+
         autoTable(doc, {
-            head: [['No', 'Jenis Arsip', 'Waktu', 'Jml', 'Keterangan']],
-            body: tableBody,
+            head: head,
+            body: body,
             startY: 25,
             theme: 'grid',
         })
@@ -452,18 +540,30 @@ export default function RekapArsip() {
                         <Table>
                             <TableHeader className="bg-slate-50">
                                 <TableRow>
-                                    <TableHead className="w-[50px] text-center">No</TableHead>
+                                    <TableHead>No</TableHead>
                                     <TableHead>Jenis Arsip</TableHead>
                                     <TableHead>Waktu</TableHead>
-                                    <TableHead className="text-center">Jumlah</TableHead>
+                                    {/* Kematian Specific */}
+                                    {activeCategory === 'Akta Kematian' && (
+                                        <>
+                                            <TableHead className="text-center">Akta</TableHead>
+                                            <TableHead className="text-center">Jumlah Kutipan II</TableHead>
+                                            <TableHead className="text-center">Jumlah Lapor Kematian</TableHead>
+                                        </>
+                                    )}
+                                    {/* Kutipan II Kelahiran Specific */}
+                                    {activeCategory?.includes('Kutipan II') && (
+                                        <TableHead>No Daftar</TableHead>
+                                    )}
+                                    <TableHead className="text-center">{activeCategory === 'Akta Kematian' ? 'Total' : 'Jumlah Berkas'}</TableHead>
                                     <TableHead>Keterangan</TableHead>
-                                    <TableHead className="text-right">Aksi</TableHead>
+                                    <TableHead className="text-center">Aksi</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {fetching ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-64 text-center">
+                                        <TableCell colSpan={activeCategory === 'Akta Kematian' ? 9 : 6} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center gap-4 py-8">
                                                 <ThreeBodyLoader size={45} color="#4F46E5" />
                                                 <p className="text-sm font-medium text-indigo-600/80 animate-pulse">
@@ -474,7 +574,7 @@ export default function RekapArsip() {
                                     </TableRow>
                                 ) : paginatedData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                        <TableCell colSpan={activeCategory === 'Akta Kematian' ? 9 : 6} className="h-32 text-center text-muted-foreground">
                                             Tidak ada data ditemukan.
                                         </TableCell>
                                     </TableRow>
@@ -484,17 +584,27 @@ export default function RekapArsip() {
                                             <TableCell className="text-center text-muted-foreground">
                                                 {(currentPage - 1) * itemsPerPage + i + 1}
                                             </TableCell>
-                                            <TableCell className="font-medium text-indigo-900">{item.jenis_arsip}</TableCell>
-                                            <TableCell>
+                                            <TableCell className="font-medium text-indigo-900 min-w-[150px]">{item.jenis_arsip}</TableCell>
+                                            <TableCell className="min-w-[120px]">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                                                     ${item.waktu.includes("2024") ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600"}`}>
                                                     {item.waktu}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-center font-bold text-slate-700">{item.jumlah_berkas}</TableCell>
+                                            {activeCategory === 'Akta Kematian' && (
+                                                <>
+                                                    <TableCell className="text-center italic text-muted-foreground">{item.jumlah_akta || 0}</TableCell>
+                                                    <TableCell className="text-center italic text-muted-foreground">{item.jumlah_kutipan || 0}</TableCell>
+                                                    <TableCell className="text-center italic text-muted-foreground">{item.jumlah_lapor || 0}</TableCell>
+                                                </>
+                                            )}
+                                            {activeCategory?.includes('Kutipan II') && (
+                                                <TableCell>{item.no_daftar || "-"}</TableCell>
+                                            )}
+                                            <TableCell className="text-center font-bold text-slate-900 bg-slate-50">{item.jumlah_berkas}</TableCell>
                                             <TableCell className="text-muted-foreground text-sm italic">{item.keterangan || "-"}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
+                                            <TableCell className="text-center">
+                                                <div className="flex justify-center gap-1">
                                                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="h-8 w-8 text-blue-600 hover:bg-blue-50">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
@@ -570,20 +680,84 @@ export default function RekapArsip() {
                         <div className="space-y-2">
                             <Label>Waktu (Batch)</Label>
                             <Input
-                                placeholder="Contoh: 01 Jan 2024"
+                                placeholder={activeCategory?.toLowerCase().includes("perkawinan") || activeCategory?.toLowerCase().includes("perceraian") || activeCategory?.includes('Kutipan II') ? "Contoh: Januari 2024" : (activeCategory?.toLowerCase().includes("kematian") || activeCategory?.toLowerCase().includes("kelahiran")) ? "Contoh: 12 Januari 2024 - 20 Januari 2024" : "Contoh: 01 Januari 2024"}
                                 value={formData.waktu}
                                 onChange={e => setFormData({ ...formData, waktu: e.target.value })}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label>Jumlah Berkas</Label>
-                            <Input
-                                type="number"
-                                placeholder="0"
-                                value={formData.jumlah_berkas}
-                                onChange={e => setFormData({ ...formData, jumlah_berkas: e.target.value })}
-                            />
-                        </div>
+
+                        {activeCategory?.includes('Kutipan II') && (
+                            <div className="space-y-2">
+                                <Label>Nomor Daftar</Label>
+                                <Input
+                                    placeholder="Contoh: 1 - 40"
+                                    value={formData.no_daftar}
+                                    onChange={e => setFormData({ ...formData, no_daftar: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        {activeCategory?.includes('Kutipan II') && (
+                            <div className="space-y-2">
+                                <Label>Nomor Daftar</Label>
+                                <Input
+                                    placeholder="Contoh: 1 - 40"
+                                    value={formData.no_daftar}
+                                    onChange={e => setFormData({ ...formData, no_daftar: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        {activeCategory === 'Akta Kematian' ? (
+                            <>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Jml Akta</Label>
+                                        <Input type="number" placeholder="0" value={formData.jumlah_akta} onChange={e => {
+                                            const val = e.target.value
+                                            const a = parseInt(val) || 0
+                                            const b = parseInt(String(formData.jumlah_kutipan)) || 0
+                                            const c = parseInt(String(formData.jumlah_lapor)) || 0
+                                            setFormData({ ...formData, jumlah_akta: val, jumlah_berkas: String(a + b + c) })
+                                        }} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Jumlah Kutipan II</Label>
+                                        <Input type="number" placeholder="0" value={formData.jumlah_kutipan} onChange={e => {
+                                            const val = e.target.value
+                                            const a = parseInt(String(formData.jumlah_akta)) || 0
+                                            const b = parseInt(val) || 0
+                                            const c = parseInt(String(formData.jumlah_lapor)) || 0
+                                            setFormData({ ...formData, jumlah_kutipan: val, jumlah_berkas: String(a + b + c) })
+                                        }} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Jumlah Lapor Kematian</Label>
+                                        <Input type="number" placeholder="0" value={formData.jumlah_lapor} onChange={e => {
+                                            const val = e.target.value
+                                            const a = parseInt(String(formData.jumlah_akta)) || 0
+                                            const b = parseInt(String(formData.jumlah_kutipan)) || 0
+                                            const c = parseInt(val) || 0
+                                            setFormData({ ...formData, jumlah_lapor: val, jumlah_berkas: String(a + b + c) })
+                                        }} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Total Berkas</Label>
+                                    <Input value={formData.jumlah_berkas} readOnly className="bg-slate-100 font-bold text-indigo-700" />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-2">
+                                <Label>Jumlah Berkas</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="0"
+                                    value={formData.jumlah_berkas}
+                                    onChange={e => setFormData({ ...formData, jumlah_berkas: e.target.value })}
+                                />
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label>Keterangan (Opsional)</Label>
                             <Input

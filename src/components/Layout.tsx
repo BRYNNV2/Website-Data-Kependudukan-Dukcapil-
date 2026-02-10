@@ -264,7 +264,12 @@ export default function Layout({ children }: LayoutProps) {
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/rekap-arsip/kk" icon={Users} label="Arsip KK" />
-                                {/* Future submenus can be added here */}
+                                <SubNavItem to="/rekap-arsip/akta-kelahiran-lu" icon={Baby} label="Arsip Akta Kelahiran LU" />
+                                <SubNavItem to="/rekap-arsip/akta-kelahiran-lt" icon={Baby} label="Arsip Akta Kelahiran LT" />
+                                <SubNavItem to="/rekap-arsip/akta-kelahiran-kutipan-kedua" icon={FileText} label="Arsip Kutipan II Kelahiran" />
+                                <SubNavItem to="/rekap-arsip/akta-perkawinan" icon={Heart} label="Arsip Akta Perkawinan" />
+                                <SubNavItem to="/rekap-arsip/akta-perceraian" icon={HeartCrack} label="Arsip Akta Perceraian" />
+                                <SubNavItem to="/rekap-arsip/akta-kematian" icon={BookX} label="Arsip Akta Kematian" />
                             </div>
                         </div>
                     </div>
