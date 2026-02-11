@@ -272,8 +272,9 @@ export default function RekapArsip() {
 
                 const idxKet = headerRow.findIndex(h => h.includes("KETERANGAN"))
 
-                if (idxJenis === -1 || (idxJumlah === -1 && idxAkta === -1)) {
-                    toast.error("Kolom Wajib tidak lengkap")
+                // Jika tidak ada kolom Jenis Arsip dan tidak sedang di kategori spesifik, tolak.
+                if ((idxJenis === -1 && !activeCategory) || (idxJumlah === -1 && idxAkta === -1)) {
+                    toast.error("Format Excel tidak sesuai. Pastikan ada kolom JUMLAH/TOTAL.")
                     return
                 }
 
@@ -315,8 +316,20 @@ export default function RekapArsip() {
                     const row = rawRows[i]
                     if (!row || row.length === 0) continue
 
-                    const jenisVal = row[idxJenis]
-                    if (!jenisVal || String(jenisVal).toUpperCase().includes("JUMLAH")) continue
+                    // Cek Summary Row (JUMLAH/TOTAL) di kolom awal atau jenis
+                    const checkStr = (String(row[0]) + String(row[1]) + String(idxJenis !== -1 ? row[idxJenis] : "")).toUpperCase()
+                    if (checkStr.includes("JUMLAH") || checkStr.includes("TOTAL")) continue
+
+                    let jenisString = ""
+                    if (activeCategory) {
+                        jenisString = activeCategory.toUpperCase()
+                    } else if (idxJenis !== -1) {
+                        jenisString = String(row[idxJenis] || "").trim().toUpperCase()
+                    }
+
+                    // Validasi: Kalau gak ada jenis arsip (dan bukan mode kategori), skip baris ini
+                    // Atau kalau baris ini adalah baris Total/Jumlah, skip
+                    if (!jenisString || jenisString.includes("JUMLAH") || (idxJenis !== -1 && String(row[idxJenis]).toUpperCase().includes("JUMLAH"))) continue
 
                     const jumlahParsed = idxJumlah !== -1 ? (parseInt(String(row[idxJumlah] || '0').replace(/[^0-9]/g, '')) || 0) : 0
 
@@ -329,7 +342,7 @@ export default function RekapArsip() {
                     if (finalTotal === 0 && !row[idxKet]) continue // Skip kalau jumlah 0 dan gak ada ket
 
                     mappedData.push({
-                        jenis_arsip: String(jenisVal).trim().toUpperCase(),
+                        jenis_arsip: jenisString,
                         waktu: idxWaktu !== -1 ? formatWaktuWithYear(row[idxWaktu], importYear) : `- ${importYear}`,
                         jumlah_berkas: finalTotal,
                         jumlah_akta: valAkta,
@@ -697,16 +710,7 @@ export default function RekapArsip() {
                             </div>
                         )}
 
-                        {activeCategory?.includes('Kutipan II') && (
-                            <div className="space-y-2">
-                                <Label>Nomor Daftar</Label>
-                                <Input
-                                    placeholder="Contoh: 1 - 40"
-                                    value={formData.no_daftar}
-                                    onChange={e => setFormData({ ...formData, no_daftar: e.target.value })}
-                                />
-                            </div>
-                        )}
+
 
                         {activeCategory === 'Akta Kematian' ? (
                             <>
