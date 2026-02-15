@@ -287,6 +287,7 @@ export default function RekapArsip() {
                         // Check if it matches a month name (e.g., "JANUARI")
                         const monthNames = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"]
                         if (monthNames.some(m => trimmed.toUpperCase().includes(m))) {
+                            if (targetYear === 'AUTO') return trimmed
                             return `${trimmed} ${targetYear}`
                         }
 
@@ -297,6 +298,7 @@ export default function RekapArsip() {
                             const month = parts[1]
                             return `${day} ${month} ${targetYear}`
                         }
+                        if (targetYear === 'AUTO') return trimmed
                         return `${trimmed} ${targetYear}`
                     }
 
@@ -304,9 +306,11 @@ export default function RekapArsip() {
                         const date_info = new Date(Math.floor(serial - 25569) * 86400 * 1000)
                         const day = date_info.getDate().toString().padStart(2, '0')
                         const month = date_info.toLocaleString('id-ID', { month: 'short' })
+                        if (targetYear === 'AUTO') return `${day} ${month} ${date_info.getFullYear()}`
                         return `${day} ${month} ${targetYear}`
                     }
 
+                    if (targetYear === 'AUTO') return "" // Kalau format gak jelas dan AUTO, biarkan kosong atau string asli?
                     return `- ${targetYear}`
                 }
 
@@ -460,10 +464,11 @@ export default function RekapArsip() {
                         <div className="flex flex-col gap-0.5 px-1">
                             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tahun Data</span>
                             <Select value={importYear} onValueChange={setImportYear}>
-                                <SelectTrigger className="h-7 w-[80px] border-none bg-slate-100 focus:ring-0 text-sm p-1">
+                                <SelectTrigger className="h-7 w-[110px] border-none bg-slate-100 focus:ring-0 text-sm p-1">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="AUTO">Sesuai File</SelectItem>
                                     {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                                 </SelectContent>
                             </Select>

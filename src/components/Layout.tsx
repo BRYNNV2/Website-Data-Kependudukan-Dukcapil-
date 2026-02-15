@@ -264,6 +264,7 @@ export default function Layout({ children }: LayoutProps) {
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/rekap-arsip/kk" icon={Users} label="Arsip KK" />
+                                <SubNavItem to="/rekap-arsip/ktp" icon={CreditCard} label="Arsip KTP" />
                                 <SubNavItem to="/rekap-arsip/akta-kelahiran-lu" icon={Baby} label="Arsip Akta Kelahiran LU" />
                                 <SubNavItem to="/rekap-arsip/akta-kelahiran-lt" icon={Baby} label="Arsip Akta Kelahiran LT" />
                                 <SubNavItem to="/rekap-arsip/akta-kelahiran-kutipan-kedua" icon={FileText} label="Arsip Kutipan II Kelahiran" />
