@@ -340,7 +340,7 @@ export default function Layout({ children }: LayoutProps) {
 
                     {/* Right Side Tools */}
                     <div className="flex items-center gap-2 sm:gap-4" id="action-buttons">
-                        <div className="hidden lg:block mr-2">
+                        <div className="mr-2">
                             <GlobalSearch />
                         </div>
                         <ModeToggle />
