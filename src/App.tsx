@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner"
 import Settings from "@/pages/Settings"
 import RekapArsip from "@/pages/RekapArsip"
 import RecycleBin from "@/pages/RecycleBin"
+import BackupData from "@/pages/BackupData"
 import { ThemeProvider } from "@/components/theme-provider"
 import { NetworkStatus } from "@/components/NetworkStatus"
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="/rekap-arsip" element={<RekapArsip />} />
             <Route path="/rekap-arsip/:category" element={<RekapArsip />} />
             <Route path="/recycle-bin" element={<RecycleBin />} />
+            <Route path="/backup-data" element={<BackupData />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>

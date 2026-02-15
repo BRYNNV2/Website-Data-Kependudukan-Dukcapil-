@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX, Trash2, Archive } from "lucide-react"
+import { LayoutDashboard, FileText, LogOut, Menu, X, ChevronDown, Users, CreditCard, Baby, Settings, ChevronsLeft, ChevronsRight, ScrollText, Heart, HeartCrack, BookX, Trash2, Archive, Database } from "lucide-react"
 import logoDinas from "@/assets/logo.png"
 import { supabase } from "@/lib/supabaseClient"
 import { NotificationDropdown } from "./NotificationDropdown"
@@ -18,6 +18,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { GlobalSearch } from "./GlobalSearch"
 import { ModeToggle } from "./mode-toggle"
 
 interface LayoutProps {
@@ -280,6 +281,7 @@ export default function Layout({ children }: LayoutProps) {
                         <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
                     </div>
                     <NavItem to="/recycle-bin" icon={Trash2} label="Tempat Sampah" />
+                    <NavItem to="/backup-data" icon={Database} label="Backup Data" />
                     <div id="nav-settings">
                         <NavItem to="/settings" icon={Settings} label="Pengaturan" />
                     </div>
@@ -338,6 +340,9 @@ export default function Layout({ children }: LayoutProps) {
 
                     {/* Right Side Tools */}
                     <div className="flex items-center gap-2 sm:gap-4" id="action-buttons">
+                        <div className="hidden lg:block mr-2">
+                            <GlobalSearch />
+                        </div>
                         <ModeToggle />
                         <NotificationDropdown />
                         <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>

@@ -35,6 +35,16 @@ Setiap kategori data dapat dicetak langsung menjadi laporan PDF resmi dengan for
 ### 6. 🌐 Peta Persebaran (GIS Lite)
 Visualisasi lokasi tempat tinggal penduduk (Latitude/Longitude) untuk pemetaan demografis sederhana.
 
+### 7. 🔍 Global Smart Search (Google-Style)
+Pencarian super cepat di seluruh database (KTP, KK, Akta, dll) tanpa reload halaman.
+*   **Autocomplete**: Hasil muncul seketika saat mengetik.
+*   **Smart Link**: Klik hasil pencarian langsung membuka detail data dan **otomatis memfilter** tabel di halaman tujuan.
+
+### 8. 💾 Backup Data Aman (JSON)
+Fitur penyelamatan data (Disaster Recovery) yang memungkinkan administrator mengunduh cadangan seluruh database dalam format JSON yang terstruktur dan aman.
+*   **Backup Full System**: Satu klik untuk mengamankan semua tabel.
+*   **Backup Parsial**: Download per kategori data (misal: hanya Akta Kelahiran).
+
 ---
 
 ## 🛠️ Teknologi yang Digunakan

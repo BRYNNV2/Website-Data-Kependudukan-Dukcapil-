@@ -1,5 +1,6 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect, useMemo } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -43,8 +44,8 @@ interface AktaData {
     deret?: string
     created_at: string
 }
-
 export function AktaForm() {
+    const [searchParams] = useSearchParams()
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaData[]>([])
@@ -66,6 +67,15 @@ export function AktaForm() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+
+    // Auto-search from URL param
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+        }
+    }, [searchParams])
+
     const [searchDeret, setSearchDeret] = useState("")
     const [viewItem, setViewItem] = useState<AktaData | null>(null)
     const [noAktaError, setNoAktaError] = useState<string | null>(null)

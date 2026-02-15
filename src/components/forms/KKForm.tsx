@@ -1,5 +1,6 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect, useMemo } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,7 +49,9 @@ interface KKData {
     created_at: string
 }
 
+
 export function KKForm() {
+    const [searchParams] = useSearchParams()
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<KKData[]>([])
@@ -78,6 +81,14 @@ export function KKForm() {
     const [lastInput, setLastInput] = useState({ keterangan: "", deret: "" })
     const [noKkError, setNoKkError] = useState<string | null>(null)
     const [isCheckingNoKk, setIsCheckingNoKk] = useState(false)
+
+    // Auto-search from URL param
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+        }
+    }, [searchParams])
 
     // Get unique Deret values from current data (simplified for server-side)
     const uniqueDeret = useMemo(() => {

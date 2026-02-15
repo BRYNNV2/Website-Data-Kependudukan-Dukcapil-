@@ -1,5 +1,6 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -43,6 +44,7 @@ interface AktaKematianData {
     id: number
     no_surat: string
     nama: string
+    nama_almarhum?: string
     tanggal_meninggal: string
     tempat_lahir: string
     tanggal_lahir: string
@@ -54,6 +56,7 @@ interface AktaKematianData {
 
 
 export function AktaKematianForm() {
+    const [searchParams] = useSearchParams()
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaKematianData[]>([])
@@ -86,6 +89,14 @@ export function AktaKematianForm() {
     const [selectedYear, setSelectedYear] = useState<string>("all")
     const [selectedDeret, setSelectedDeret] = useState<string>("all")
     const [viewItem, setViewItem] = useState<AktaKematianData | null>(null)
+
+    // Auto-search from URL param
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+        }
+    }, [searchParams])
 
     // Initial Load - Metadata & First Page
     useEffect(() => {
@@ -599,7 +610,7 @@ export function AktaKematianForm() {
                                     dataList.map((item) => (
                                         <tr key={item.id} className="border-b hover:bg-muted/50">
                                             <td className="p-3">{item.no_surat}</td>
-                                            <td className="p-3 font-medium text-slate-800">{item.nama}</td>
+                                            <td className="p-3 font-medium text-slate-800">{item.nama || item.nama_almarhum}</td>
                                             <td className="p-3">
                                                 {new Date(item.tanggal_meninggal).toLocaleDateString("id-ID")}
                                             </td>

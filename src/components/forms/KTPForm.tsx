@@ -1,5 +1,6 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect, useMemo } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@ interface KTPData {
 }
 
 export function KTPForm() {
+    const [searchParams] = useSearchParams()
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<KTPData[]>([])
@@ -67,6 +69,14 @@ export function KTPForm() {
     const [currentImage, setCurrentImage] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [searchDeret, setSearchDeret] = useState("")
+
+    // Auto-search from URL param
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+        }
+    }, [searchParams])
     const [viewItem, setViewItem] = useState<KTPData | null>(null)
     const [nikError, setNikError] = useState<string | null>(null)
     const [isCheckingNik, setIsCheckingNik] = useState(false)

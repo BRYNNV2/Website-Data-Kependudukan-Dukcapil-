@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, CheckCircle, Heart, HeartCrack, BookX, HardDrive, CreditCard } from "lucide-react"
+import { Users, FileText, CheckCircle, Heart, HeartCrack, BookX, HardDrive, CreditCard, Archive } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { id } from "date-fns/locale"
@@ -82,6 +82,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true)
     const [selectedStatCategory, setSelectedStatCategory] = useState("akta_perceraian")
     const [annualStats, setAnnualStats] = useState<{ year: string, count: number }[]>([])
+    const [rekapStats, setRekapStats] = useState<{ year: string, count: number }[]>([])
 
 
     // Color map for charts
@@ -97,12 +98,48 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchDashboardData()
+        fetchRekapStats()
     }, [])
 
 
     useEffect(() => {
         fetchAnnualStats()
     }, [selectedStatCategory])
+
+    const fetchRekapStats = async () => {
+        try {
+            // Fetch all rekap_arsip data needed
+            const { data } = await supabase.from('rekap_arsip').select('waktu, jumlah_berkas')
+
+            if (data) {
+                const yearCounts: Record<string, number> = {}
+
+                data.forEach((item: any) => {
+                    // Parse year from "waktu" string (e.g. "Januari 2024" or "2023")
+                    // Match 4 digits starting with 19 or 20
+                    const yearMatch = String(item.waktu).match(/(19|20)\d{2}/)
+                    const year = yearMatch ? yearMatch[0] : 'Lainnya'
+                    const count = item.jumlah_berkas || 0
+
+                    yearCounts[year] = (yearCounts[year] || 0) + count
+                })
+
+                const sorted = Object.entries(yearCounts)
+                    .map(([year, count]) => ({ year, count }))
+                    .filter(x => x.year !== 'Lainnya') // Optional: hide invalid years
+                    .sort((a, b) => a.year.localeCompare(b.year))
+
+                // Add Lainnya at the end if exists and > 0
+                if (yearCounts['Lainnya'] > 0) {
+                    sorted.push({ year: 'Lainnya', count: yearCounts['Lainnya'] })
+                }
+
+                setRekapStats(sorted)
+            }
+        } catch (error) {
+            console.error("Error fetching rekap stats:", error)
+        }
+    }
 
     const fetchAnnualStats = async () => {
         let tableName = selectedStatCategory
@@ -113,7 +150,7 @@ export default function Dashboard() {
             case 'akta_perkawinan': dateCol = 'tanggal_terbit'; break;
             case 'akta_kelahiran': dateCol = 'tanggal_lahir'; break;
             case 'akta_kematian': dateCol = 'tanggal_meninggal'; break;
-            case 'penduduk': dateCol = 'created_at'; break; // Penduduk usually doesn't have a single 'event date' other than birth, but 'created_at' implies input time
+            case 'penduduk': dateCol = 'created_at'; break;
             case 'kartu_keluarga': dateCol = 'tanggal_dikeluarkan'; break;
             default: dateCol = 'created_at';
         }
@@ -363,55 +400,100 @@ export default function Dashboard() {
                 </CardContent>
             </Card>
 
-            {/* Annual Statistics Section */}
-            <Card className="col-span-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle>Statistik Data Tahunan</CardTitle>
-                    <div className="w-[200px]">
-                        <Select value={selectedStatCategory} onValueChange={setSelectedStatCategory}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Pilih Kategori" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="akta_perceraian">Akta Perceraian</SelectItem>
-                                <SelectItem value="akta_perkawinan">Akta Perkawinan</SelectItem>
-                                <SelectItem value="akta_kematian">Akta Kematian</SelectItem>
-                                <SelectItem value="akta_kelahiran">Akta Kelahiran</SelectItem>
-                                <SelectItem value="kartu_keluarga">Kartu Keluarga</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-[350px] w-full">
-                        {annualStats.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={annualStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-                                    <YAxis allowDecimals={false} />
-                                    <Tooltip
-                                        cursor={{ fill: 'transparent' }}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    />
-                                    <Bar
-                                        dataKey="count"
-                                        name="Jumlah Data"
-                                        fill={categoryColors[selectedStatCategory] || "#8884d8"}
-                                        radius={[4, 4, 0, 0]}
-                                        barSize={40}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
-                                <BookX className="h-8 w-8 opacity-20" />
-                                <p>Belum ada data statistik untuk kategori ini.</p>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Annual Statistics & Rekap Arsip Section */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-5 col-span-full">
+
+                {/* Statistik Data Input (Kependudukan) */}
+                <Card className="col-span-1 md:col-span-2 lg:col-span-3">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle>Statistik Data Tahunan</CardTitle>
+                        <div className="w-[180px]">
+                            <Select value={selectedStatCategory} onValueChange={setSelectedStatCategory}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih Kategori" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="akta_perceraian">Akta Perceraian</SelectItem>
+                                    <SelectItem value="akta_perkawinan">Akta Perkawinan</SelectItem>
+                                    <SelectItem value="akta_kematian">Akta Kematian</SelectItem>
+                                    <SelectItem value="akta_kelahiran">Akta Kelahiran</SelectItem>
+                                    <SelectItem value="kartu_keluarga">Kartu Keluarga</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[350px] w-full">
+                            {annualStats.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={annualStats} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                                        <YAxis allowDecimals={false} />
+                                        <Tooltip
+                                            cursor={{ fill: 'transparent' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Bar
+                                            dataKey="count"
+                                            name="Jumlah Data"
+                                            fill={categoryColors[selectedStatCategory] || "#8884d8"}
+                                            radius={[4, 4, 0, 0]}
+                                            barSize={40}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
+                                    <BookX className="h-8 w-8 opacity-20" />
+                                    <p>Belum ada data statistik.</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Statistik Rekap Arsip Fisik */}
+                <Card className="col-span-1 md:col-span-2 lg:col-span-2 border-indigo-100 bg-indigo-50/30">
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                            <Archive className="h-5 w-5 text-indigo-600" />
+                            <CardTitle className="text-indigo-900">Arsip Fisik (Rekap)</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[350px] w-full">
+                            {rekapStats.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={rekapStats} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E0E7FF" />
+                                        <XAxis dataKey="year" tick={{ fontSize: 11, fill: '#4F46E5' }} axisLine={false} tickLine={false} />
+                                        <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6B7280' }} />
+                                        <Tooltip
+                                            cursor={{ fill: '#E0E7FF' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Bar
+                                            dataKey="count"
+                                            name="Total Arsip"
+                                            fill="#4F46E5"
+                                            radius={[4, 4, 0, 0]}
+                                            barSize={30}
+                                        >
+                                            {/* Gradient or distinct color */}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-indigo-400 flex-col gap-2">
+                                    <Archive className="h-8 w-8 opacity-30" />
+                                    <p className="text-sm">Belum ada data arsip.</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Charts Section */}
             <div className="grid gap-4 md:grid-cols-2">

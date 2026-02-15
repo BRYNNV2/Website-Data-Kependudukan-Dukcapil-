@@ -1,5 +1,6 @@
 import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { ExcelActions } from "@/components/ExcelActions"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ interface AktaPerceraianData {
 }
 
 export function AktaPerceraianForm() {
+    const [searchParams] = useSearchParams()
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaPerceraianData[]>([])
@@ -83,6 +85,14 @@ export function AktaPerceraianForm() {
     const [selectedYear, setSelectedYear] = useState<string>("all")
     const [selectedDeret, setSelectedDeret] = useState<string>("all")
     const [viewItem, setViewItem] = useState<AktaPerceraianData | null>(null)
+
+    // Auto-search from URL param
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+        }
+    }, [searchParams])
 
     // Initial Load - Metadata & First Page
     useEffect(() => {
