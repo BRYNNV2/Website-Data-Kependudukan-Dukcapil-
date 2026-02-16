@@ -278,7 +278,7 @@ export function GlobalSearch() {
     return (
         <>
             {/* Desktop View */}
-            <div ref={containerRef} className="relative hidden w-full max-w-sm md:w-64 lg:w-96 group z-50 lg:block">
+            <div id="global-search-component" ref={containerRef} className="relative hidden w-full max-w-sm md:w-64 lg:w-96 group z-50 lg:block">
                 <div className="relative">
                     <Search className={cn("absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors",
                         (open || query) ? "text-indigo-600" : "group-hover:text-indigo-600"

@@ -101,6 +101,9 @@ export default function Login() {
                 localStorage.removeItem("rememberedUserId")
             }
 
+            // Record login time for notifications
+            localStorage.setItem("login_timestamp", String(Date.now()))
+
             toast.success("Login berhasil! Mengalihkan...")
 
             setTimeout(() => {

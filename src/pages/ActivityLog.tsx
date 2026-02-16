@@ -23,18 +23,25 @@ export default function ActivityLog() {
     const pageSize = 10
 
     // Auto-pruning logs older than 7 days on mount
+    // Auto-pruning logs older than 7 days on mount
     useEffect(() => {
         const pruneLogs = async () => {
             const sevenDaysAgo = new Date()
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-            const { error, count } = await supabase
-                .from('activity_logs')
-                .delete({ count: 'exact' })
-                .lt('created_at', sevenDaysAgo.toISOString())
+            try {
+                const { error, count } = await supabase
+                    .from('activity_logs')
+                    .delete({ count: 'exact' })
+                    .lt('created_at', sevenDaysAgo.toISOString())
 
-            if (!error && count && count > 0) {
-                console.log(`Auto-pruned ${count} old logs.`)
+                if (error) {
+                    console.error("Failed to auto-prune logs:", error.message)
+                } else if (count && count > 0) {
+                    console.log(`Auto-pruned ${count} old logs.`)
+                }
+            } catch (err) {
+                console.error("Unexpected error pruning logs:", err)
             }
         }
         pruneLogs()
@@ -46,14 +53,18 @@ export default function ActivityLog() {
 
     const fetchLogs = async () => {
         setLoading(true)
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
         const { data, error, count } = await supabase
             .from('activity_logs')
             .select('*', { count: 'exact' })
+            .gte('created_at', sevenDaysAgo.toISOString()) // Filter only last 7 days
             .order('created_at', { ascending: false })
             .range(page * pageSize, (page + 1) * pageSize - 1)
 
         if (error) {
-            console.error(error)
+            console.error("Error fetching logs:", error)
         } else if (data) {
             setLogs(data)
             if (count) setTotalPages(Math.ceil(count / pageSize))

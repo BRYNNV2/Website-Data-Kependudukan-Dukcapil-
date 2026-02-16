@@ -35,6 +35,26 @@ export function OnboardingTour() {
             placement: 'right',
         },
         {
+            target: '#nav-rekap-arsip',
+            content: (
+                <div>
+                    Gunakan menu <strong>Rekap Arsip</strong> untuk melihat tabel data lengkap, melakukan filter, edit, hapus, dan mencetak laporan. Semua data tersimpan rapi di sini.
+                </div>
+            ),
+            placement: 'right',
+        },
+        {
+            target: '#global-search-wrapper',
+            content: (
+                <div>
+                    <strong>🔍 Global Smart Search</strong><br />
+                    Cari data penduduk apa saja (NIK, Nama, KK, No Surat) dari sini! <br />
+                    Tekan <code>Ctrl + K</code> untuk akses cepat. Klik hasil pencarian untuk langsung menuju ke detail data.
+                </div>
+            ),
+            placement: 'bottom',
+        },
+        {
             target: '#action-buttons',
             content: (
                 <div>
@@ -42,6 +62,26 @@ export function OnboardingTour() {
                 </div>
             ),
             placement: 'bottom',
+        },
+        {
+            target: '#nav-recycle-bin',
+            content: (
+                <div>
+                    <strong>♻️ Safety Net</strong><br />
+                    Data yang dihapus tidak langsung hilang! Cek <strong>Tempat Sampah</strong> untuk memulihkan data yang tidak sengaja terhapus.
+                </div>
+            ),
+            placement: 'right',
+        },
+        {
+            target: '#nav-backup-data',
+            content: (
+                <div>
+                    <strong>💾 Backup & Restore</strong><br />
+                    Amankan database Anda! Download arsip data dalam format JSON sewaktu-waktu untuk cadangan darurat (Disaster Recovery).
+                </div>
+            ),
+            placement: 'right',
         },
         {
             target: '#nav-settings',

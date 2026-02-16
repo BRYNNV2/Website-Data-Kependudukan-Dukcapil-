@@ -83,6 +83,7 @@ export default function Layout({ children }: LayoutProps) {
 
     const confirmLogout = async () => {
         await supabase.auth.signOut()
+        localStorage.removeItem("login_timestamp") // Clear login session time
         navigate("/")
     }
 
@@ -280,8 +281,12 @@ export default function Layout({ children }: LayoutProps) {
                     <div id="nav-activity-log">
                         <NavItem to="/activity-log" icon={ScrollText} label="Log Aktivitas" />
                     </div>
-                    <NavItem to="/recycle-bin" icon={Trash2} label="Tempat Sampah" />
-                    <NavItem to="/backup-data" icon={Database} label="Backup Data" />
+                    <div id="nav-recycle-bin">
+                        <NavItem to="/recycle-bin" icon={Trash2} label="Tempat Sampah" />
+                    </div>
+                    <div id="nav-backup-data">
+                        <NavItem to="/backup-data" icon={Database} label="Backup Data" />
+                    </div>
                     <div id="nav-settings">
                         <NavItem to="/settings" icon={Settings} label="Pengaturan" />
                     </div>
@@ -340,7 +345,7 @@ export default function Layout({ children }: LayoutProps) {
 
                     {/* Right Side Tools */}
                     <div className="flex items-center gap-2 sm:gap-4" id="action-buttons">
-                        <div className="mr-2">
+                        <div className="mr-2" id="global-search-wrapper">
                             <GlobalSearch />
                         </div>
                         <ModeToggle />

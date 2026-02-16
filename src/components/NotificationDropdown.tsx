@@ -136,6 +136,20 @@ export const NotificationDropdown = () => {
                 }
             };
 
+            // 0. Info: Login Time (Session Start) 🕒
+            const loginTime = localStorage.getItem('login_timestamp');
+            if (loginTime) {
+                const notifId = `login-session-${loginTime}`;
+                addNotif({
+                    id: notifId,
+                    type: 'info',
+                    title: 'Login Berhasil',
+                    message: `Sesi aktif sejak ${new Date(Number(loginTime)).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB.`,
+                    timestamp: new Date(Number(loginTime)).toISOString(),
+                    read: getReadStatus(notifId)
+                });
+            }
+
             missingKTP?.forEach(item => {
                 const notifId = `ktp-missing-${item.nik}`;
                 addNotif({
