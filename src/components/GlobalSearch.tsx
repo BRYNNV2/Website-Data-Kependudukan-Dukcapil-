@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Input } from "@/components/ui/input"
 import { Search, Loader2, Users, Baby, Heart, HeartCrack, BookX, CreditCard, ChevronRight, X, ArrowLeft } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
@@ -334,10 +335,10 @@ export function GlobalSearch() {
                 </Button>
             </div>
 
-            {/* Mobile Search Overlay */}
-            {mobileSearchOpen && (
-                <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in fade-in duration-200 lg:hidden">
-                    <div className="flex items-center gap-2 p-4 border-b">
+            {/* Mobile Search Overlay used PORTAL */}
+            {mobileSearchOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-white flex flex-col animate-in fade-in duration-200 lg:hidden">
+                    <div className="flex items-center gap-2 p-4 border-b bg-white safe-area-top">
                         <Button variant="ghost" size="icon" onClick={() => setMobileSearchOpen(false)} className="shrink-0">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
@@ -345,7 +346,7 @@ export function GlobalSearch() {
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 ref={mobileInputRef}
-                                className="pl-9 pr-8 bg-slate-100 border-none focus-visible:ring-indigo-500"
+                                className="pl-9 pr-8 bg-slate-100 border-none focus-visible:ring-indigo-500 h-10"
                                 placeholder="Cari nama, NIK, KK..."
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value as string)}
@@ -360,7 +361,7 @@ export function GlobalSearch() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2">
+                    <div className="flex-1 overflow-y-auto p-2 bg-white safe-area-bottom">
                         {query.length < 2 ? (
                             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground opacity-50">
                                 <Search className="h-12 w-12 mb-2" />
@@ -372,7 +373,8 @@ export function GlobalSearch() {
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     )
