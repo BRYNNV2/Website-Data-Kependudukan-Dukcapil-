@@ -317,33 +317,164 @@ export function AktaPerkawinanForm() {
         setDeleteId(null)
     }
 
+    // Helper untuk parsing tanggal Indonesia (Contoh: "12 AGUSTUS 2002" -> "2002-08-12")
+    const parseIndonesianDate = (dateStr: string | number | Date) => {
+        if (!dateStr) return null;
+        if (dateStr instanceof Date) return dateStr.toISOString().split('T')[0];
+        // Jika format number (serial excel)
+        if (typeof dateStr === 'number') {
+            const date = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
+            return date.toISOString().split('T')[0];
+        }
+
+        // Cek format YYYY-MM-DD standar
+        const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (isoDateRegex.test(String(dateStr))) return String(dateStr);
+
+        const str = String(dateStr).trim().toUpperCase();
+
+        // Mapping bulan indo + TYPOS Handling
+        // Tambahkan typo umum biar user tidak stress
+        const months: { [key: string]: string } = {
+            'JANUARI': '01', 'JAN': '01', 'JANURAI': '01',
+            'FEBRUARI': '02', 'FEB': '02', 'PEBRUARI': '02', 'FEBUARI': '02',
+            'MARET': '03', 'MAR': '03', 'MARETT': '03',
+            'APRIL': '04', 'APR': '04', 'APRILL': '04',
+            'MEI': '05', 'MAY': '05', 'MIE': '05',
+            'JUNI': '06', 'JUN': '06', 'JUNY': '06',
+            'JULI': '07', 'JUL': '07', 'JULY': '07',
+            'AGUSTUS': '08', 'AGT': '08', 'AUG': '08', 'AUGUSTUS': '08',
+            'SEPTEMBER': '09', 'SEP': '09', 'SEPTEMEBR': '09', 'SEPTEMBRE': '09',
+            'OKTOBER': '10', 'OKT': '10', 'OCT': '10', 'OCTOBER': '10',
+            'NOVEMBER': '11', 'NOV': '11', 'NOPEMBER': '11',
+            'DESEMBER': '12', 'DES': '12', 'DEC': '12', 'DESEMEBR': '12'
+        };
+
+        // Coba split spasi "12 AGUSTUS 2002" atau "12-AGUSTUS-2002"
+        const parts = str.split(/[\s-]+/);
+        if (parts.length >= 3) {
+            const day = parts[0].padStart(2, '0');
+            const monthName = parts[1];
+            const year = parts[2];
+            const month = months[monthName];
+
+            // Validasi sederhana: bulan ketemu, tahun & tanggal berupa angka
+            if (month && !isNaN(Number(year)) && !isNaN(Number(day))) {
+                return `${year}-${month}-${day}`;
+            }
+        }
+        return null; // Return null jika format tidak dikenali, biarkan null atau string asli
+    };
+
     const handleImport = async (importedData: any[]) => {
         setLoading(true)
         try {
-            const validData = importedData.map(item => ({
-                no_akta: String(item['No. Akta'] || item['no_akta'] || item['No Akta'] || ''),
-                nama_suami: item['Nama Suami'] || item['nama_suami'] || '',
-                nama_istri: item['Nama Istri'] || item['nama_istri'] || '',
-                tanggal_terbit: item['Tanggal Terbit'] || item['tanggal_terbit'] || null,
-                agama: item['Agama'] || item['agama'] || '',
-                keterangan: item['Keterangan'] || item['keterangan'] || '',
-                deret: item['Deret'] || item['deret'] || '',
-                jenis: item['Jenis'] || item['jenis'] || 'Biasa'
-            })).filter(item => item.nama_suami && item.nama_istri)
+            const validData = importedData.map(item => {
+                // Logika Split Nama Suami & Istri
+                let suami = item['Nama Suami'] || item['nama_suami'] || '';
+                let istri = item['Nama Istri'] || item['nama_istri'] || '';
+
+                // Cek kolom gabungan "Suami&Istri" atau "Suami & Istri"
+                const combinedName = item['Suami&Istri'] || item['Suami & Istri'];
+                if ((!suami || !istri) && combinedName) {
+                    // Split berdasarkan " DAN " (case insensitive)
+                    const parts = String(combinedName).split(/ DAN /i);
+                    if (parts.length >= 2) {
+                        suami = parts[0].trim();
+                        istri = parts[1].trim();
+                    } else {
+                        suami = String(combinedName).trim(); // Fallback jika tidak ada separator
+                    }
+                }
+
+                // Logika Tanggal
+                const rawTgl = item['Tanggal Terbit'] || item['tanggal_terbit'] || item['Tanggal Diterbitkan'] || null;
+                // Coba parse jika formatnya text indonesia
+                const parsedDate = parseIndonesianDate(rawTgl);
+                // GUNAKAN HASIL PARSING (bisa null), JANGAN GUNAKAN rawTgl LAGI jika gagal parse
+                // Jika null, biarkan null (database akan terima null)
+                const tgl = parsedDate;
+
+                // Logika Jenis Arsip
+                let jenis = 'Biasa';
+                const rawJenis = item['Jenis'] || item['jenis'] || item['JENIS ARSIP'] || '';
+                if (rawJenis) {
+                    const j = String(rawJenis).toUpperCase();
+                    if (j.includes('CAMPURAN')) jenis = 'Campuran';
+                    else if (j.includes('UMUM')) jenis = 'Umum';
+                    else if (j.includes('BIASA')) jenis = 'Biasa';
+                    else if (j.includes('AKTE PERKAWINAN')) jenis = 'Biasa'; // Mapping default dari excel user
+                }
+
+                return {
+                    no_akta: String(item['No. Akta'] || item['no_akta'] || item['No Akta'] || ''),
+                    nama_suami: suami,
+                    nama_istri: istri,
+                    tanggal_terbit: tgl,
+                    agama: item['Agama'] || item['agama'] || '',
+                    keterangan: item['Keterangan'] || item['keterangan'] || '',
+                    deret: item['Deret'] || item['deret'] || '',
+                    jenis: jenis
+                }
+            }).filter(item => {
+                // Filter Ketat: Buang data sampah
+                const isNoAktaValid = item.no_akta && item.no_akta.length > 2 && !item.no_akta.includes('#VALUE') && !item.no_akta.includes('#N/A');
+                const isNamaValid = item.nama_suami && item.nama_suami.length > 1; // Minimal ada nama suami
+
+                // Return true hanya jika data layak
+                return isNoAktaValid && isNamaValid;
+            })
 
             if (validData.length === 0) {
-                toast.error("Data valid tidak ditemukan")
+                toast.error("Tidak ditemukan data valid. Pastikan nama kolom Excel sesuai (No. Akta, Suami&Istri).")
                 setLoading(false)
                 return
             }
 
-            const { error } = await supabase.from('akta_perkawinan').upsert(validData, { onConflict: 'no_akta' })
-            if (error) throw error
+            // Logic Manual Upsert (Safe Mode)
+            // 1. Ambil semua no_akta yang ada di database yang cocok dengan data import
+            const noAktas = validData.map(d => d.no_akta);
+            const { data: existingData } = await supabase
+                .from('akta_perkawinan')
+                .select('no_akta, id')
+                .in('no_akta', noAktas);
 
-            await logActivity("IMPORT DATA PERKAWINAN", `Import ${validData.length} data`)
-            toast.success(`Import berhasil: ${validData.length} data`)
+            const existingMap = new Map(existingData?.map(d => [d.no_akta, d.id]));
+
+            const updates = [];
+            const inserts = [];
+
+            for (const item of validData) {
+                if (existingMap.has(item.no_akta)) {
+                    // Jika data sudah ada -> Masukkan ke antrian UPDATE
+                    updates.push({ ...item, id: existingMap.get(item.no_akta) });
+                } else {
+                    // Jika data belum ada -> Masukkan ke antrian INSERT
+                    inserts.push(item);
+                }
+            }
+
+            // Eksekusi Bulk Insert
+            if (inserts.length > 0) {
+                const { error: insertError } = await supabase.from('akta_perkawinan').insert(inserts);
+                if (insertError) throw insertError;
+            }
+
+            // Eksekusi Bulk Update (Sayangnya Supabase tidak support bulk update efisien tanpa upsert)
+            // Kita loop update satu per satu atau gunakan Upsert TANPA onConflict jika constraint sudah benar (tapi kan belum)
+            // Workaround: Karena update satu-satu lambat, kita abaikan update massal dulu atau upsert TANPA menentukan kolom onConflict (biarkan default ID)
+            // TAPI, update by ID itu aman.
+            if (updates.length > 0) {
+                // Untuk performa, upsert dengan ID adalah cara terbaik update bulk
+                const { error: updateError } = await supabase.from('akta_perkawinan').upsert(updates);
+                if (updateError) throw updateError;
+            }
+
+            await logActivity("IMPORT DATA PERKAWINAN", `Import: ${inserts.length} Baru, ${updates.length} Update`)
+            toast.success(`Berhasil: ${inserts.length} data baru, ${updates.length} diperbarui`)
             fetchData()
         } catch (err: any) {
+            console.error(err)
             toast.error("Import gagal: " + err.message)
         } finally {
             setLoading(false)
@@ -666,7 +797,7 @@ export function AktaPerkawinanForm() {
                                 <tr className="border-b text-left">
                                     <th className="p-3 font-medium">No. Akta</th>
                                     <th className="p-3 font-medium">Suami & Istri</th>
-                                    <th className="p-3 font-medium">Agama</th>
+                                    <th className="p-3 font-medium">Agama & Tgl Terbit</th>
                                     <th className="p-3 font-medium">Deret</th>
                                     <th className="p-3 font-medium">Keterangan</th>
                                     <th className="p-3 font-medium text-center">Aksi</th>
@@ -699,7 +830,9 @@ export function AktaPerkawinanForm() {
                                             </td>
                                             <td className="p-3">
                                                 <div>{item.agama}</div>
-                                                <div className="text-xs text-muted-foreground">{new Date(item.tanggal_terbit).toLocaleDateString("id-ID")}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }) : "-"}
+                                                </div>
                                             </td>
                                             <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
                                             <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
