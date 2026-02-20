@@ -240,7 +240,7 @@ export function AktaPerkawinanForm() {
                     nama_istri: formData.nama_istri,
                     tanggal_terbit: formData.tanggal_terbit,
                     agama: formData.agama,
-                    jenis: formData.jenis,
+                    jenis: formData.jenis || "Biasa",
                     keterangan: formData.keterangan,
                     deret: formData.deret,
                     foto_dokumen: photoUrl

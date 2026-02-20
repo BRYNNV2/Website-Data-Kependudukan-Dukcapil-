@@ -26,13 +26,21 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+    const location = useLocation() // Init location first
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [inputDataOpen, setInputDataOpen] = useState(false)
     const [rekapArsipOpen, setRekapArsipOpen] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const [aktaKelahiranOpen, setAktaKelahiranOpen] = useState(location.pathname.includes('/akta-kelahiran'))
     const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
     const [userName, setUserName] = useState("Admin Petugas")
-    const location = useLocation()
+
+    // Effect to open submenu if navigated to via other means
+    useEffect(() => {
+        if (location.pathname.includes('/akta-kelahiran')) {
+            setAktaKelahiranOpen(true)
+        }
+    }, [location.pathname])
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -69,12 +77,10 @@ export default function Layout({ children }: LayoutProps) {
 
     // Auto-expand Input Data & Rekap Arsip menu
     useEffect(() => {
-        if (isInputDataActive()) {
+        if (location.pathname.includes('/input-data')) {
             setInputDataOpen(true)
         }
-        if (isRekapArsipActive()) {
-            setRekapArsipOpen(true)
-        }
+        if (location.pathname.includes('/rekap-arsip')) setRekapArsipOpen(true)
     }, [location.pathname])
 
     const handleLogoutClick = () => {
@@ -102,13 +108,14 @@ export default function Layout({ children }: LayoutProps) {
         </Link>
     )
 
-    const SubNavItem = ({ to, icon: Icon, label }: { to: string, icon: any, label: string }) => (
+    const SubNavItem = ({ to, icon: Icon, label, className }: { to: string, icon: any, label: string, className?: string }) => (
         <Link to={to}>
             <div className={cn(
                 "flex items-center gap-3 pl-9 pr-3 py-2 rounded-md transition-all text-sm",
                 isActive(to)
                     ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                className
             )}>
                 <Icon className="h-4 w-4" />
                 <span>{label}</span>
@@ -224,7 +231,47 @@ export default function Layout({ children }: LayoutProps) {
                             <div className="space-y-1">
                                 <SubNavItem to="/input-data/kartu-keluarga" icon={Users} label="Kartu Keluarga" />
                                 <SubNavItem to="/input-data/ktp" icon={CreditCard} label="KTP Elektronik" />
-                                <SubNavItem to="/input-data/akta-kelahiran" icon={Baby} label="Akta Kelahiran" />
+
+                                {/* Akta Kelahiran Submenu (LU/LT) */}
+                                <div className="pl-9 pr-3 py-2 rounded-md transition-all text-sm group">
+                                    <button
+                                        className="flex items-center justify-between w-full text-muted-foreground hover:text-foreground"
+                                        onClick={() => setAktaKelahiranOpen(!aktaKelahiranOpen)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Baby className="h-4 w-4" />
+                                            <span>Akta Kelahiran</span>
+                                        </div>
+                                        <ChevronDown className={cn(
+                                            "h-3 w-3 transition-transform duration-200",
+                                            aktaKelahiranOpen ? "rotate-180" : ""
+                                        )} />
+                                    </button>
+                                    <div className={cn(
+                                        "overflow-hidden transition-all duration-200 pl-4 border-l ml-2 mt-1 space-y-1",
+                                        aktaKelahiranOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"
+                                    )}>
+                                        <Link to="/input-data/akta-kelahiran" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran") && !isActive("/input-data/akta-kelahiran-lu") && !isActive("/input-data/akta-kelahiran-lt") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Akta Kelahiran (Default)
+                                        </Link>
+                                        <Link to="/input-data/akta-kelahiran-lt" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-lt") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Akta Kelahiran LT
+                                        </Link>
+                                        <Link to="/input-data/akta-kelahiran-lu" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-lu") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Akta Kelahiran LU
+                                        </Link>
+                                    </div>
+                                </div>
+
                                 <SubNavItem to="/input-data/akta-perkawinan" icon={Heart} label="Akta Perkawinan" />
                                 <SubNavItem to="/input-data/akta-perceraian" icon={HeartCrack} label="Akta Perceraian" />
                                 <SubNavItem to="/input-data/akta-kematian" icon={BookX} label="Akta Kematian" />

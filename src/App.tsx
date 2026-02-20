@@ -27,9 +27,10 @@ const LayoutWrapper = () => (
   </Layout>
 )
 
+
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <Router>
         <Routes>
           <Route path="/" element={<Login />} />
@@ -39,6 +40,8 @@ function App() {
             <Route path="/input-data/kartu-keluarga" element={<InputKK />} />
             <Route path="/input-data/ktp" element={<InputKTP />} />
             <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
+            <Route path="/input-data/akta-kelahiran-lt" element={<InputAkta />} />
+            <Route path="/input-data/akta-kelahiran-lu" element={<InputAkta />} />
             <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
             <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
             <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />

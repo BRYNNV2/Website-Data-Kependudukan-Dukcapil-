@@ -1,36 +1,57 @@
-import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
-import { useState, useEffect, useMemo } from "react"
-import { useSearchParams } from "react-router-dom"
-import { toast } from "sonner"
-import { ExcelActions } from "@/components/ExcelActions"
+import { useState, useEffect } from "react"
+import { useLocation } from "react-router-dom"
+import { supabase } from "@/lib/supabaseClient" // Corrected import path
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
+import { Plus, Search, Trash2, Edit, FileDown, X, Eye } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { ExcelActions } from "@/components/ExcelActions"
+import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { logActivity } from "@/lib/logger"
-import { compressImage } from "@/lib/imageCompression"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { ImageUploadCapture } from "@/components/ImageUploadCapture"
+import { compressImage } from "@/lib/imageCompression"
+
+// Helper function to parse Indonesian dates like "12 Juli 2002" or "DI TERBITKAN 12 JULI 2002"
+const parseIndonesianDate = (dateString: string): string | null => {
+    if (!dateString) return null;
+
+    // Remove "DI TERBITKAN " prefix if exists (case insensitive)
+    let cleanString = dateString.replace(/DI TERBITKAN\s+/i, '').trim();
+
+    // Map Indonesian month names to English
+    const months: { [key: string]: string } = {
+        'JANUARI': 'January', 'FEBRUARI': 'February', 'MARET': 'March', 'APRIL': 'April',
+        'MEI': 'May', 'JUNI': 'June', 'JULI': 'July', 'AGUSTUS': 'August',
+        'SEPTEMBER': 'September', 'OKTOBER': 'October', 'NOVEMBER': 'November', 'DESEMBER': 'December',
+        'JAN': 'Jan', 'FEB': 'Feb', 'MAR': 'Mar', 'APR': 'Apr', 'JUN': 'Jun',
+        'JUL': 'Jul', 'AGU': 'Aug', 'SEP': 'Sep', 'OKT': 'Oct', 'NOV': 'Nov', 'DES': 'Dec'
+    };
+
+    // Replace month name
+    for (const [indo, eng] of Object.entries(months)) {
+        const regex = new RegExp(`\\b${indo}\\b`, 'i');
+        if (regex.test(cleanString)) {
+            // Replace with English month for parsing
+            cleanString = cleanString.replace(regex, eng);
+            break;
+        }
+    }
+
+    // Try parsing
+    const date = new Date(cleanString);
+    if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0]; // Return YYYY-MM-DD
+    }
+
+    return null; // Failed to parse
+};
 
 interface AktaData {
     id: number
@@ -38,141 +59,140 @@ interface AktaData {
     nama_anak: string
     nama_ayah: string
     nama_ibu: string
-    tgl_lahir_anak: string
+    tanggal_terbit?: string | null
+    tgl_lahir_anak?: string
+    agama?: string
     foto_dokumen?: string
     keterangan?: string
     deret?: string
+    tipe_akta?: string // 'LT', 'LU', or 'DEFAULT'
     created_at: string
 }
+
 export function AktaForm() {
-    const [searchParams] = useSearchParams()
+    const location = useLocation()
+
+    // Determine Type based on URL structure
+    let tipeAkta = 'DEFAULT' // Fallback for normal /akta-kelahiran route
+    let pageTitle = 'Data Akta Kelahiran (Default)'
+
+    if (location.pathname.endsWith('-lu')) {
+        tipeAkta = 'LU'
+        pageTitle = 'Data Akta Kelahiran LU'
+    } else if (location.pathname.endsWith('-lt')) {
+        tipeAkta = 'LT'
+        pageTitle = 'Data Akta Kelahiran LT'
+    }
+
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [dataList, setDataList] = useState<AktaData[]>([])
     const [totalItems, setTotalItems] = useState(0)
-    const [currentPage, setCurrentPage] = useState(0)
-    const pageSize = 10
-    const [deleteId, setDeleteId] = useState<number | null>(null)
-    const [editId, setEditId] = useState<number | null>(null)
     const [showForm, setShowForm] = useState(false)
+    const [editId, setEditId] = useState<number | null>(null)
+    const [deleteId, setDeleteId] = useState<number | null>(null)
+    const [viewItem, setViewItem] = useState<AktaData | null>(null)
+
+    // Form State
     const [formData, setFormData] = useState({
         no_akta: "",
         nama_anak: "",
         nama_ayah: "",
         nama_ibu: "",
-        tgl_lahir_anak: "",
+        tanggal_terbit: "",
+        agama: "",
         keterangan: "",
-        deret: ""
+        deret: "",
+        tipe_akta: tipeAkta
     })
+
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [currentImage, setCurrentImage] = useState<string | null>(null)
+
+    // Pagination & Search
+    const [currentPage, setCurrentPage] = useState(0)
+    const pageSize = 10
     const [searchTerm, setSearchTerm] = useState("")
-
-    // Auto-search from URL param
-    useEffect(() => {
-        const query = searchParams.get("search")
-        if (query) {
-            setSearchTerm(query)
-        }
-    }, [searchParams])
-
     const [searchDeret, setSearchDeret] = useState("")
-    const [viewItem, setViewItem] = useState<AktaData | null>(null)
-    const [noAktaError, setNoAktaError] = useState<string | null>(null)
+    const [deretOptions, setDeretOptions] = useState<string[]>([])
+
+    // Validation
     const [isCheckingNoAkta, setIsCheckingNoAkta] = useState(false)
+    const [noAktaError, setNoAktaError] = useState<string | null>(null)
 
-    // Get unique Deret values for filter dropdown (Server-side simplified)
-    const uniqueDeret = useMemo(() => {
-        return Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort()
-    }, [dataList])
-
-    // Server-side pagination calculation
-    const totalPages = Math.ceil(totalItems / pageSize)
-
-    // Reset to first page when search changes
+    // Reset tipe when location changes
     useEffect(() => {
-        setCurrentPage(0)
-    }, [searchTerm, searchDeret])
+        setFormData(prev => ({ ...prev, tipe_akta: tipeAkta }))
+        setCurrentPage(0) // Reset pagination
+        setShowForm(false)
+        setSearchTerm("")
+    }, [tipeAkta])
 
-    // Fetch data when params change
+    useEffect(() => {
+        if (location.state?.refresh) {
+            fetchData()
+        }
+    }, [location.state])
+
+    useEffect(() => {
+        fetchDeretOptions()
+    }, [])
+
+    const fetchDeretOptions = async () => {
+        // Ambil unique deret untuk filter
+        const { data } = await supabase
+            .from("akta_kelahiran")
+            .select("deret")
+            .not("deret", "is", null)
+            .order("deret")
+
+        if (data) {
+            const unique = Array.from(new Set(data.map(d => d.deret))).filter(Boolean) as string[]
+            setDeretOptions(unique)
+        }
+    }
+
+    // Debounce Search
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             fetchData()
         }, 500)
 
         return () => clearTimeout(delayDebounceFn)
-    }, [currentPage, searchTerm, searchDeret])
+    }, [currentPage, searchTerm, searchDeret, tipeAkta])
 
 
     // Real-time No. Akta Validation
     useEffect(() => {
-        const checkNoAktaAvailability = async () => {
-            if (!formData.no_akta || formData.no_akta.length < 3) {
-                setNoAktaError(null)
-                return
-            }
+        if (!formData.no_akta || formData.no_akta.length < 3) {
+            setNoAktaError(null)
+            return
+        }
 
+        // Skip check if editing and no_akta hasn't changed (complex logic, simplified here: just check on submit mostly, but good for UX)
+        // For now, let's keep it simple. Only check if it's NOT the item being edited.
+        // We need existing data list to check locally or query db? DB is better.
+
+        const checkAvailability = async () => {
             setIsCheckingNoAkta(true)
-            try {
-                // Check if No Akta exists in database
-                let query = supabase
-                    .from('akta_kelahiran')
-                    .select('id, no_akta')
-                    .eq('no_akta', formData.no_akta)
-                    .eq('is_deleted', false)
+            const { data } = await supabase
+                .from("akta_kelahiran")
+                .select("id")
+                .eq("no_akta", formData.no_akta)
+                .neq("id", editId || -1) // Exclude current editing item
+                .maybeSingle()
 
-                // If editing, allow same No Akta if it belongs to current record
-                if (editId) {
-                    query = query.neq('id', editId)
-                }
-
-                const { data, error } = await query
-
-                if (error) throw error
-
-                if (data && data.length > 0) {
-                    setNoAktaError("Nomor Akta sudah terdaftar!")
-                } else {
-                    setNoAktaError(null)
-                }
-            } catch (error) {
-                console.error("Error checking No Akta:", error)
-            } finally {
-                setIsCheckingNoAkta(false)
-            }
-        }
-
-        const timeoutId = setTimeout(() => {
-            checkNoAktaAvailability()
-        }, 500) // Debounce 500ms
-
-        return () => clearTimeout(timeoutId)
-    }, [formData.no_akta, editId])
-
-    const getPageNumbers = () => {
-        const pages = []
-        if (totalPages <= 7) {
-            for (let i = 0; i < totalPages; i++) pages.push(i)
-        } else {
-            if (currentPage < 4) {
-                for (let i = 0; i < 5; i++) pages.push(i)
-                pages.push(-1)
-                pages.push(totalPages - 1)
-            } else if (currentPage > totalPages - 5) {
-                pages.push(0)
-                pages.push(-1)
-                for (let i = totalPages - 5; i < totalPages; i++) pages.push(i)
+            setIsCheckingNoAkta(false)
+            if (data) {
+                setNoAktaError("Nomor Akta sudah digunakan!")
             } else {
-                pages.push(0)
-                pages.push(-1)
-                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
-                pages.push(-1)
-                pages.push(totalPages - 1)
+                setNoAktaError(null)
             }
         }
-        return pages
-    }
 
+        const timeout = setTimeout(checkAvailability, 500)
+        return () => clearTimeout(timeout)
+    }, [formData.no_akta, editId])
 
 
     const fetchData = async () => {
@@ -183,19 +203,25 @@ export function AktaForm() {
         let query = supabase
             .from("akta_kelahiran")
             .select("*", { count: "exact" })
+            .eq('tipe_akta', tipeAkta) // Filter by Type
             .eq("is_deleted", false)
             .order("created_at", { ascending: false })
             .range(from, to)
 
         if (searchTerm) {
-            query = query.or(`no_akta.ilike.%${searchTerm}%,nama_anak.ilike.%${searchTerm}%,nama_ayah.ilike.%${searchTerm}%,nama_ibu.ilike.%${searchTerm}%`)
+            query = query.or(`no_akta.ilike.%${searchTerm}%,nama_anak.ilike.%${searchTerm}%,nama_ayah.ilike.%${searchTerm}%,nama_ibu.ilike.%${searchTerm}%,agama.ilike.%${searchTerm}%`)
         }
 
         if (searchDeret) {
             query = query.eq("deret", searchDeret)
         }
 
-        const { data, count, error } = await query
+        const { data, error, count } = await query
+
+        if (error) {
+            console.error("Error fetching data:", error)
+            toast.error("Gagal memuat data.")
+        }
 
         if (!error && data) {
             setDataList(data)
@@ -204,56 +230,70 @@ export function AktaForm() {
         setIsFetching(false)
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        let value = e.target.value
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target
+        let finalValue = value
 
         // Khusus No Akta: Angka, Huruf, Strip (-) diperbolehkan | Auto Uppercase
-        if (e.target.id === 'no_akta') {
-            value = value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase()
+        if (name === 'no_akta') {
+            finalValue = value.replace(/[^a-zA-Z0-9-\/.]/g, '').toUpperCase()
         }
 
-        setFormData({ ...formData, [e.target.id]: value })
+        setFormData(prev => ({ ...prev, [name]: finalValue }))
 
-        if (e.target.id === 'no_akta') {
-            setNoAktaError(null) // Reset temporary error while typing
+        // Clear error when user types in no_akta
+        if (name === "no_akta") {
+            setNoAktaError(null)
         }
     }
 
+    const resetForm = () => {
+        setFormData({
+            no_akta: "",
+            nama_anak: "",
+            nama_ayah: "",
+            nama_ibu: "",
+            tanggal_terbit: "",
+            agama: "",
+            keterangan: "",
+            deret: "",
+            tipe_akta: tipeAkta
+        })
+        setSelectedFile(null)
+        setCurrentImage(null)
+        setShowForm(false)
+        setEditId(null)
+        setNoAktaError(null)
+    }
+
     const handleSubmit = async () => {
-        // Validation
-        if (!formData.nama_anak || !formData.nama_ayah || !formData.nama_ibu || !formData.tgl_lahir_anak) {
-            toast.error("Nama anak, orang tua, dan tanggal lahir harus diisi!")
+        if (!formData.no_akta || !formData.nama_anak) {
+            toast.error("Harap lengkapi No. Akta dan Nama Anak")
             return
         }
 
-        const selectedDate = new Date(formData.tgl_lahir_anak)
-        const today = new Date()
-        if (selectedDate > today) {
-            toast.error("Tanggal lahir tidak boleh lebih dari hari ini!")
+        if (noAktaError) {
+            toast.error("Nomor Akta tidak valid atau sudah digunakan.")
             return
         }
 
         setLoading(true)
         try {
-            let photoUrl = currentImage
+            let imageUrl = currentImage
 
+            // Upload Image if selected
             if (selectedFile) {
-                const compressedFile = await compressImage(selectedFile) // Compress here
+                const compressedFile = await compressImage(selectedFile)
                 const fileExt = compressedFile.name.split('.').pop()
-                const fileName = `akta/${Date.now()}.${fileExt}`
+                const fileName = `${Date.now()}.${fileExt}`
                 const { error: uploadError } = await supabase.storage
-                    .from('population_docs')
-                    .upload(fileName, compressedFile)
+                    .from('documents')
+                    .upload(`akta/${fileName}`, compressedFile)
 
-                if (uploadError) {
-                    throw new Error("Gagal upload foto: " + uploadError.message)
-                }
+                if (uploadError) throw uploadError
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('population_docs')
-                    .getPublicUrl(fileName)
-
-                photoUrl = publicUrl
+                const { data: publicData } = supabase.storage.from('documents').getPublicUrl(`akta/${fileName}`)
+                imageUrl = publicData.publicUrl
             }
 
             if (editId) {
@@ -263,16 +303,17 @@ export function AktaForm() {
                     nama_anak: formData.nama_anak,
                     nama_ayah: formData.nama_ayah,
                     nama_ibu: formData.nama_ibu,
-                    tgl_lahir_anak: formData.tgl_lahir_anak,
-                    foto_dokumen: photoUrl,
-                    keterangan: formData.keterangan,
-                    deret: formData.deret
+                    tanggal_terbit: formData.tanggal_terbit || null,
+                    agama: formData.agama || null,
+                    keterangan: formData.keterangan || null,
+                    deret: formData.deret || null,
+                    foto_dokumen: imageUrl,
+                    tipe_akta: tipeAkta // Ensure type is correct
                 }).eq("id", editId)
 
                 if (error) throw error
-                await logActivity("UPDATE DATA AKTA", `Memperbarui Akta No: ${formData.no_akta} (${formData.nama_anak})`)
-                toast.success("Data Akta Kelahiran berhasil diperbarui")
-                window.dispatchEvent(new Event('trigger-notification-refresh'))
+                await logActivity("UPDATE DATA", `Mengubah data Akta Kelahiran: ${formData.nama_anak}`)
+                toast.success("Data berhasil diperbarui")
             } else {
                 // Insert
                 const { error } = await supabase.from("akta_kelahiran").insert({
@@ -280,33 +321,27 @@ export function AktaForm() {
                     nama_anak: formData.nama_anak,
                     nama_ayah: formData.nama_ayah,
                     nama_ibu: formData.nama_ibu,
-                    tgl_lahir_anak: formData.tgl_lahir_anak,
-                    foto_dokumen: photoUrl,
-                    keterangan: formData.keterangan,
-                    deret: formData.deret
+                    tanggal_terbit: formData.tanggal_terbit || null,
+                    agama: formData.agama || null,
+                    keterangan: formData.keterangan || null,
+                    deret: formData.deret || null,
+                    foto_dokumen: imageUrl,
+                    tipe_akta: tipeAkta // Insert with type
                 })
 
                 if (error) throw error
-                await logActivity("TAMBAH DATA AKTA", `Menambahkan Akta No: ${formData.no_akta} (${formData.nama_anak})`)
-                toast.success("Data Akta Kelahiran berhasil disimpan")
-                window.dispatchEvent(new Event('trigger-notification-refresh'))
+                await logActivity("TAMBAH DATA", `Menambahkan Akta Kelahiran baru: ${formData.nama_anak}`)
+                toast.success("Data berhasil disimpan")
             }
 
-            resetForm()
             fetchData()
+            resetForm()
         } catch (error: any) {
+            console.error("Error saving:", error)
             toast.error("Gagal menyimpan: " + error.message)
         } finally {
             setLoading(false)
         }
-    }
-
-    const resetForm = () => {
-        setFormData({ no_akta: "", nama_anak: "", nama_ayah: "", nama_ibu: "", tgl_lahir_anak: "", keterangan: "", deret: "" })
-        setSelectedFile(null)
-        setCurrentImage(null)
-        setShowForm(false)
-        setEditId(null)
     }
 
     const handleView = (item: AktaData) => {
@@ -319,9 +354,11 @@ export function AktaForm() {
             nama_anak: item.nama_anak,
             nama_ayah: item.nama_ayah,
             nama_ibu: item.nama_ibu,
-            tgl_lahir_anak: item.tgl_lahir_anak,
+            tanggal_terbit: item.tanggal_terbit || "",
+            agama: item.agama || "",
             keterangan: item.keterangan || "",
-            deret: item.deret || ""
+            deret: item.deret || "",
+            tipe_akta: tipeAkta
         })
         setCurrentImage(item.foto_dokumen || null)
         setEditId(item.id)
@@ -350,38 +387,137 @@ export function AktaForm() {
         setDeleteId(id)
     }
 
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return "-"
-        return new Date(dateStr).toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })
-    }
-
     const handleImport = async (importedData: any[]) => {
         setLoading(true)
         try {
-            const validData = importedData.map(item => ({
-                no_akta: String(item['No Akta'] || item['no_akta'] || ''),
-                nama_anak: item['Nama Anak'] || item['nama_anak'] || '',
-                nama_ayah: item['Nama Ayah'] || item['nama_ayah'] || '',
-                nama_ibu: item['Nama Ibu'] || item['nama_ibu'] || '',
-                tgl_lahir_anak: item['Tanggal Lahir'] || item['tgl_lahir_anak'] || null,
-                keterangan: item['Keterangan'] || item['keterangan'] || '',
-                deret: item['Deret'] || item['deret'] || ''
-            })).filter(item => item.nama_anak && item.tgl_lahir_anak)
+            // NORMALISASI KEYS (Ubah ke UpperCase & Trim Spasi)
+            const normalizedData = importedData.map(item => {
+                const newItem: any = {};
+                Object.keys(item).forEach(key => {
+                    const cleanKey = key.trim().toUpperCase();
+                    newItem[cleanKey] = item[key];
+                });
+                return newItem;
+            });
 
-            if (validData.length === 0) {
-                toast.error("Data tidak valid. Pastikan kolom Nama Anak, dll benar.")
+            const validData = normalizedData.map(item => {
+                // 1. Ambil No. Akta (Support KODE ARSIP)
+                const noAkta = String(
+                    item['KODE ARSIP'] || item['KODE AKTA KELAHIRAN'] ||
+                    item['NO. AKTA'] || item['NO AKTA'] ||
+                    item['KODE AKTA'] || item['no_akta'] || ''
+                );
+
+                // 2. Parsed Tanggal
+                const rawTahun = String(
+                    item['TANGGAL TERBIT'] || item['TAHUN TERBIT'] ||
+                    item['TAHUN'] || item['TANGGAL'] || ''
+                );
+                let parsedDate = parseIndonesianDate(rawTahun);
+
+                // 3. Fallback Parse Date from No Akta
+                if (!parsedDate && noAkta) {
+                    const dateMatch = noAkta.match(/[-](\d{8})[-]/); // Cari -12012023-
+                    if (dateMatch && dateMatch[1]) {
+                        const dateStr = dateMatch[1];
+                        const d = dateStr.substring(0, 2);
+                        const m = dateStr.substring(2, 4);
+                        const y = dateStr.substring(4, 8);
+                        if (!isNaN(Number(d)) && !isNaN(Number(m)) && !isNaN(Number(y))) {
+                            parsedDate = `${y}-${m}-${d}`;
+                        }
+                    } else {
+                        // Coba regex umum 8 digit
+                        const dateMatchGen = noAkta.match(/(\d{8})/);
+                        if (dateMatchGen && dateMatchGen[1]) {
+                            const dateStr = dateMatchGen[1];
+                            const d = dateStr.substring(0, 2);
+                            const m = dateStr.substring(2, 4);
+                            const y = dateStr.substring(4, 8);
+                            if (Number(d) <= 31 && Number(m) <= 12 && Number(y) > 1900) {
+                                parsedDate = `${y}-${m}-${d}`;
+                            }
+                        }
+                    }
+                }
+
+                return {
+                    no_akta: noAkta,
+                    nama_anak: item['NAMA ANAK'] || item['NAMA'] || '',
+                    nama_ayah: item['NAMA AYAH'] || item['AYAH'] || '-',
+                    nama_ibu: item['NAMA IBU'] || item['IBU'] || '-',
+                    tanggal_terbit: parsedDate,
+                    agama: item['AGAMA'] || '',
+                    foto_dokumen: null,
+                    keterangan: item['KETERANGAN'] || item['KET'] || '',
+                    deret: item['DERET'] || '',
+                    tipe_akta: tipeAkta
+                }
+            }).filter(item => {
+                return item.no_akta && item.nama_anak;
+            })
+
+            const invalidCount = importedData.length - validData.length
+
+            // Dedup within file
+            const uniqueDataMap = new Map();
+            validData.forEach(item => {
+                uniqueDataMap.set(item.no_akta, item);
+            });
+            const uniqueData = Array.from(uniqueDataMap.values());
+
+            const duplicateCount = validData.length - uniqueData.length
+            const skippedCount = invalidCount + duplicateCount
+
+            if (uniqueData.length === 0) {
+                const firstItem = normalizedData[0] || {};
+                const keysInfo = Object.keys(firstItem).join(", ");
+                toast.error(`Gagal! ${importedData.length} data tidak valid. Kolom terbaca: [${keysInfo}]`)
                 setLoading(false)
                 return
             }
 
-            const { error } = await supabase.from('akta_kelahiran').upsert(validData, { onConflict: 'no_akta' })
+            if (skippedCount > 0) {
+                toast.warning(`Info Import: ${uniqueData.length} siap diproses. ${skippedCount} data di-skip (${duplicateCount} duplikat No.Akta, ${invalidCount} format salah).`)
+            }
+
+            // CEK DATA EKSISTING DI DB UNTUK MEMPERTAHANKAN TIPE_AKTA LAMA
+            const noAktaList = uniqueData.map(d => d.no_akta)
+            const existingTypesMap = new Map<string, string>();
+            const chunkSize = 1000;
+
+            for (let i = 0; i < noAktaList.length; i += chunkSize) {
+                const chunk = noAktaList.slice(i, i + chunkSize);
+                const { data: existingData } = await supabase
+                    .from('akta_kelahiran')
+                    .select('no_akta, tipe_akta')
+                    .in('no_akta', chunk);
+
+                if (existingData) {
+                    existingData.forEach((row: any) => {
+                        existingTypesMap.set(row.no_akta, row.tipe_akta);
+                    });
+                }
+            }
+
+            const dataToUpsert = uniqueData.map(item => {
+                const existingType = existingTypesMap.get(item.no_akta);
+                return {
+                    ...item,
+                    tipe_akta: existingType || item.tipe_akta
+                };
+            });
+
+            const { error } = await supabase.from('akta_kelahiran').upsert(dataToUpsert, { onConflict: 'no_akta' })
 
             if (error) throw error
 
-            await logActivity("IMPORT DATA AKTA KELAHIRAN", `Mengimport ${validData.length} data via Excel`)
-            toast.success(`Berhasil mengimport ${validData.length} data`)
+            await logActivity("IMPORT DATA AKTA KELAHIRAN", `Mengimport ${dataToUpsert.length} data via Excel`)
+            toast.success(`Berhasil mengimport ${dataToUpsert.length} data`)
             fetchData()
+            fetchDeretOptions()
         } catch (error: any) {
+            console.error("Import Error:", error)
             toast.error("Gagal import: " + error.message)
         } finally {
             setLoading(false)
@@ -390,32 +526,22 @@ export function AktaForm() {
 
     const handleDownloadPDF = () => {
         const doc = new jsPDF()
-
-        doc.text("Laporan Data Akta Kelahiran", 14, 15)
-        doc.setFontSize(10)
-        doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22)
-
-        const tableData = dataList.map((item, index) => [
-            index + 1,
-            item.no_akta || "-",
-            item.nama_anak,
-            item.nama_ayah,
-            item.nama_ibu,
-            new Date(item.tgl_lahir_anak).toLocaleDateString('id-ID'),
-            item.keterangan || '-',
-            item.deret || '-'
-        ])
+        doc.text(`Laporan ${pageTitle}`, 14, 10)
 
         autoTable(doc, {
-            head: [['No', 'No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Lahir', 'Keterangan', 'Deret']],
-            body: tableData,
-            startY: 25,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            styles: { fontSize: 8 }
+            head: [['No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Terbit', 'Agama', 'Deret']],
+            body: dataList.map(item => [
+                item.no_akta,
+                item.nama_anak,
+                item.nama_ayah,
+                item.nama_ibu,
+                item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID") : "-",
+                (item.agama && item.agama !== "LAINNYA") ? item.agama : "-",
+                item.deret || "-"
+            ]),
         })
 
-        doc.save(`Laporan_Akta_${new Date().getTime()}.pdf`)
+        doc.save(`${pageTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`)
     }
 
     return (
@@ -445,8 +571,12 @@ export function AktaForm() {
                                     <span className="font-semibold">Nama Ibu</span>
                                     <span className="col-span-2">: {viewItem.nama_ibu}</span>
 
-                                    <span className="font-semibold">Tgl Lahir Anak</span>
-                                    <span className="col-span-2">: {formatDate(viewItem.tgl_lahir_anak)}</span>
+                                    <span className="font-semibold">Tanggal Terbit</span>
+                                    <span className="col-span-2">: {viewItem.tanggal_terbit ? new Date(viewItem.tanggal_terbit).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-"}</span>
+
+                                    {/* AGAMA DETAIL */}
+                                    <span className="font-semibold">Agama</span>
+                                    <span className="col-span-2">: {(viewItem.agama && viewItem.agama !== "LAINNYA") ? viewItem.agama : "-"}</span>
 
                                     <span className="font-semibold">Keterangan</span>
                                     <span className="col-span-2">: {viewItem.keterangan || "-"}</span>
@@ -456,7 +586,7 @@ export function AktaForm() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Buki Fisik / Foto</Label>
+                                <Label>Bukti Fisik / Foto</Label>
                                 {viewItem.foto_dokumen ? (
                                     <div className="border rounded-md overflow-hidden aspect-video bg-muted flex items-center justify-center">
                                         <img
@@ -496,8 +626,8 @@ export function AktaForm() {
             {/* Header with Search and Add Button */}
             <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Data Akta Kelahiran</h2>
-                    <p className="text-sm text-muted-foreground">Kelola data Akta Kelahiran</p>
+                    <h2 className="text-2xl font-bold text-gray-800">{pageTitle}</h2>
+                    <p className="text-sm text-muted-foreground">Kelola data {pageTitle}</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center">
@@ -509,7 +639,7 @@ export function AktaForm() {
                             onChange={(e) => setSearchDeret(e.target.value)}
                         >
                             <option value="">Semua Deret</option>
-                            {uniqueDeret.map((deret, index) => (
+                            {deretOptions.map((deret, index) => (
                                 <option key={index} value={deret as string}>{deret}</option>
                             ))}
                         </select>
@@ -518,7 +648,7 @@ export function AktaForm() {
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari No. Akta / Nama / Ket..."
+                            placeholder="Cari No. Akta / Nama / Agama..."
                             className="pl-8"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -548,9 +678,9 @@ export function AktaForm() {
             {showForm && (
                 <Card className="border-primary/20 bg-primary/5">
                     <CardHeader>
-                        <CardTitle>{editId ? "Edit Akta Kelahiran" : "Input Akta Kelahiran Baru"}</CardTitle>
+                        <CardTitle>{editId ? `Edit ${pageTitle}` : `Input ${pageTitle} Baru`}</CardTitle>
                         <CardDescription>
-                            {editId ? "Perbarui data Akta Kelahiran." : "Masukkan data kelahiran untuk penerbitan Akta."}
+                            {editId ? `Perbarui data ${pageTitle}.` : "Masukkan data kelahiran untuk penerbitan Akta."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -558,6 +688,7 @@ export function AktaForm() {
                             <Label htmlFor="no_akta">Nomor Akta (jika ada)</Label>
                             <Input
                                 id="no_akta"
+                                name="no_akta"
                                 value={formData.no_akta}
                                 onChange={handleChange}
                                 placeholder="Nomor Registrasi Akta"
@@ -569,21 +700,54 @@ export function AktaForm() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="nama_anak">Nama Anak</Label>
-                            <Input id="nama_anak" value={formData.nama_anak} onChange={handleChange} placeholder="Nama Lengkap Anak" />
+                            <Input id="nama_anak" name="nama_anak" value={formData.nama_anak} onChange={handleChange} placeholder="Nama Lengkap Anak" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="nama_ayah">Nama Ayah</Label>
-                                <Input id="nama_ayah" value={formData.nama_ayah} onChange={handleChange} placeholder="Nama Lengkap Ayah" />
+                                <Input id="nama_ayah" name="nama_ayah" value={formData.nama_ayah} onChange={handleChange} placeholder="Nama Lengkap Ayah" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nama_ibu">Nama Ibu</Label>
-                                <Input id="nama_ibu" value={formData.nama_ibu} onChange={handleChange} placeholder="Nama Lengkap Ibu" />
+                                <Input id="nama_ibu" name="nama_ibu" value={formData.nama_ibu} onChange={handleChange} placeholder="Nama Lengkap Ibu" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="tgl_lahir_anak">Tanggal Lahir Anak</Label>
-                            <Input id="tgl_lahir_anak" type="date" value={formData.tgl_lahir_anak} onChange={handleChange} />
+
+                        {/* TANGGAL TERBIT & AGAMA GRID */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="tanggal_terbit">Tanggal Terbit</Label>
+                                <Input
+                                    id="tanggal_terbit"
+                                    name="tanggal_terbit"
+                                    type="date"
+                                    value={formData.tanggal_terbit || ''}
+                                    onChange={handleChange}
+                                />
+                            </div>
+
+                            {/* AGAMA INPUT (ONLY FOR DEFAULT TYPE) */}
+                            {tipeAkta === 'DEFAULT' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="agama">Agama (Opsional)</Label>
+                                    <select
+                                        id="agama"
+                                        name="agama"
+                                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        value={formData.agama || ""}
+                                        onChange={handleChange}
+                                    >
+                                        <option value="">LAINNYA / KOSONG</option>
+                                        <option value="ISLAM">ISLAM</option>
+                                        <option value="KRISTEN">KRISTEN</option>
+                                        <option value="KATOLIK">KATOLIK</option>
+                                        <option value="HINDU">HINDU</option>
+                                        <option value="BUDDHA">BUDDHA</option>
+                                        <option value="KHONGHUCU">KHONGHUCU</option>
+                                        <option value="PRIBUMI">PRIBUMI</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {/* New Fields: Keterangan & Deret */}
@@ -593,6 +757,7 @@ export function AktaForm() {
                                 <div className="relative">
                                     <Input
                                         id="deret"
+                                        name="deret"
                                         list="deret-list"
                                         placeholder="Contoh: 4"
                                         value={formData.deret}
@@ -600,7 +765,7 @@ export function AktaForm() {
                                         autoComplete="off"
                                     />
                                     <datalist id="deret-list">
-                                        {Array.from(new Set(dataList.map(item => item.deret).filter(Boolean))).sort().map((item, index) => (
+                                        {deretOptions.map((item, index) => (
                                             <option key={index} value={item} />
                                         ))}
                                     </datalist>
@@ -611,6 +776,7 @@ export function AktaForm() {
                                 <div className="relative">
                                     <Input
                                         id="keterangan"
+                                        name="keterangan"
                                         list="keterangan-list"
                                         placeholder="Contoh: BOOK AKTA 36"
                                         value={formData.keterangan}
@@ -660,24 +826,32 @@ export function AktaForm() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b bg-muted/50">
-                                        <th className="text-left p-3 font-medium">No. Akta</th>
-                                        <th className="text-left p-3 font-medium">Nama Anak</th>
-                                        <th className="text-left p-3 font-medium">Deret</th>
-                                        <th className="text-left p-3 font-medium">Keterangan</th>
-                                        <th className="text-center p-3 font-medium">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-b bg-muted/50">
+                                        <TableHead className="text-left p-3 font-medium">No. Akta</TableHead>
+                                        <TableHead className="text-left p-3 font-medium">Nama Anak</TableHead>
+                                        <TableHead className="text-left p-3 font-medium">Tanggal Terbit</TableHead>
+                                        {/* Show Agama Column Only on Default */}
+                                        {tipeAkta === 'DEFAULT' && <TableHead className="text-left p-3 font-medium">Agama</TableHead>}
+                                        <TableHead className="text-left p-3 font-medium">Deret</TableHead>
+                                        <TableHead className="text-left p-3 font-medium">Keterangan</TableHead>
+                                        <TableHead className="text-center p-3 font-medium">Aksi</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                     {dataList.map((item) => (
-                                        <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
-                                            <td className="p-3 font-mono text-xs">{item.no_akta || "-"}</td>
-                                            <td className="p-3">{item.nama_anak}</td>
-                                            <td className="p-3 font-medium text-blue-600">{item.deret || "-"}</td>
-                                            <td className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</td>
-                                            <td className="p-3 text-center flex items-center justify-center gap-2">
+                                        <TableRow key={item.id} className="border-b hover:bg-muted/30 transition-colors">
+                                            <TableCell className="p-3 font-mono text-xs">{item.no_akta || "-"}</TableCell>
+                                            <TableCell className="p-3">{item.nama_anak}</TableCell>
+                                            <TableCell className="p-3">{item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-"}</TableCell>
+
+                                            {/* Agama Cell */}
+                                            {tipeAkta === 'DEFAULT' && <TableCell className="p-3">{(item.agama && item.agama !== "LAINNYA") ? item.agama : "-"}</TableCell>}
+
+                                            <TableCell className="p-3 font-medium text-blue-600">{item.deret || "-"}</TableCell>
+                                            <TableCell className="p-3 text-muted-foreground italic text-xs truncate max-w-[150px]">{item.keterangan || "-"}</TableCell>
+                                            <TableCell className="p-3 text-center flex items-center justify-center gap-2">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -690,66 +864,92 @@ export function AktaForm() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                     onClick={() => handleEdit(item)}
+                                                    title="Edit Data"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                                    <Edit className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                                                     onClick={() => handleDelete(item.id)}
+                                                    title="Hapus Data"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {dataList.length > 0 && (
-                        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t gap-4">
-                            <div className="text-sm text-muted-foreground order-2 sm:order-1">
-                                Menampilkan halaman {currentPage + 1} dari {totalPages}
-                            </div>
-                            <div className="flex items-center gap-1 order-1 sm:order-2">
-                                <Button
-                                    variant="outline" size="icon"
-                                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                                    disabled={currentPage === 0}
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                {getPageNumbers().map((pageNum, idx) => (
-                                    pageNum === -1 ? (
-                                        <span key={`sep-${idx}`} className="mx-1 text-muted-foreground">...</span>
-                                    ) : (
-                                        <Button
-                                            key={pageNum}
-                                            variant={currentPage === pageNum ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setCurrentPage(pageNum)}
-                                            className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'pointer-events-none' : ''}`}
-                                        >
-                                            {pageNum + 1}
-                                        </Button>
-                                    )
-                                ))}
-                                <Button
-                                    variant="outline" size="icon"
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                                    disabled={currentPage >= totalPages - 1}
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </CardContent>
+                <CardFooter className="flex items-center justify-between border-t px-6 py-4">
+                    <div className="text-xs text-muted-foreground">
+                        Menampilkan {dataList.length > 0 ? currentPage * pageSize + 1 : 0} - {Math.min((currentPage + 1) * pageSize, totalItems)} dari {totalItems} data
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                            disabled={currentPage === 0 || isFetching}
+                        >
+                            <span className="sr-only">Sebelumnya</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m15 18-6-6 6-6" /></svg>
+                        </Button>
+
+                        {(() => {
+                            const totalPages = Math.ceil(totalItems / pageSize)
+                            const maxVisible = 5
+                            let pages = []
+
+                            if (totalPages <= maxVisible + 2) {
+                                for (let i = 0; i < totalPages; i++) pages.push(i)
+                            } else {
+                                if (currentPage < 3) {
+                                    pages = [0, 1, 2, 3, 4, -1, totalPages - 1]
+                                } else if (currentPage >= totalPages - 3) {
+                                    pages = [0, -1, totalPages - 5, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1]
+                                } else {
+                                    pages = [0, -1, currentPage - 1, currentPage, currentPage + 1, -1, totalPages - 1]
+                                }
+                            }
+
+                            return pages.map((page, idx) => (
+                                page === -1 ? (
+                                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground text-xs">...</span>
+                                ) : (
+                                    <Button
+                                        key={page}
+                                        variant={currentPage === page ? "default" : "outline"}
+                                        size="icon"
+                                        className="h-8 w-8 text-xs"
+                                        onClick={() => setCurrentPage(page as number)}
+                                        disabled={isFetching}
+                                    >
+                                        {(page as number) + 1}
+                                    </Button>
+                                )
+                            ))
+                        })()}
+
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setCurrentPage(Math.min(Math.ceil(totalItems / pageSize) - 1, currentPage + 1))}
+                            disabled={currentPage >= Math.ceil(totalItems / pageSize) - 1 || isFetching}
+                        >
+                            <span className="sr-only">Selanjutnya</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m9 18 6-6-6-6" /></svg>
+                        </Button>
+                    </div>
+                </CardFooter>
             </Card>
         </div>
     )
