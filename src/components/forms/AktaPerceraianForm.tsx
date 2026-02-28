@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, Upload, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, Upload, AlertTriangle, ChevronLeft, ChevronRight, Printer } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
 import { compressImage } from "@/lib/imageCompression"
+import { printReceipt } from "@/lib/printReceipt"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
     Dialog,
@@ -364,6 +365,21 @@ export function AktaPerceraianForm() {
         doc.save(`Laporan_Akta_Perceraian_${new Date().getTime()}.pdf`)
     }
 
+    const handlePrint = (item: AktaPerceraianData) => {
+        printReceipt({
+            title: "TANDA TERIMA BERKAS KEARSIPAN AKTA PERCERAIAN",
+            documentNo: item.no_akta,
+            data: {
+                "Nama Pihak Pria (Suami)": item.nama_suami,
+                "Nama Pihak Wanita (Istri)": item.nama_istri,
+                "Nomor Akta Perceraian": item.no_akta,
+                "Tanggal Diterbitkan": item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-",
+                "Keterangan": item.keterangan || "-",
+                "Deret": item.deret || "-"
+            }
+        })
+    }
+
     return (
         <div className="space-y-6">
             {/* View Dialog */}
@@ -610,6 +626,9 @@ export function AktaPerceraianForm() {
                                                 </Button>
                                                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEdit(item)}>
                                                     <Upload className="h-4 w-4 rotate-90" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => handlePrint(item)} title="Cetak Tanda Terima">
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteId(item.id)}>
                                                     <Trash2 className="h-4 w-4" />

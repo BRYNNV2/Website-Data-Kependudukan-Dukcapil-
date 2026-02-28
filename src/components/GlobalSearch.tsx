@@ -91,17 +91,26 @@ export function GlobalSearch() {
                 .or(`nama_anak.ilike.%${q}%,no_akta.ilike.%${q}%,nama_ayah.ilike.%${q}%,nama_ibu.ilike.%${q}%`)
                 .limit(3)
 
-            if (d3) d3.forEach((item: any) => currentResults.push({
-                type: 'akta_kelahiran',
-                id: item.id,
-                title: item.nama_anak,
-                subtitle: `Anak: ${item.nama_ayah} & ${item.nama_ibu}`,
-                date: item.created_at,
-                // @ts-ignore
-                icon: Baby,
-                color: "text-orange-600 bg-orange-50",
-                link: `/input-data/akta-kelahiran?search=${encodeURIComponent(item.no_akta)}`
-            }))
+            if (d3) d3.forEach((item: any) => {
+                let basePath = '/input-data/akta-kelahiran';
+                if (item.tipe_akta === 'LT') basePath = '/input-data/akta-kelahiran-lt';
+                else if (item.tipe_akta === 'LU') basePath = '/input-data/akta-kelahiran-lu';
+                else if (item.tipe_akta === 'CLU') basePath = '/input-data/akta-kelahiran-clu';
+                else if (item.tipe_akta === 'CLT') basePath = '/input-data/akta-kelahiran-clt';
+                else if (item.tipe_akta === 'LAPOR_LAHIR') basePath = '/input-data/akta-kelahiran-lapor-lahir';
+                else if (item.tipe_akta === 'KUTIPAN_II') basePath = '/input-data/akta-kelahiran-kutipan-ii';
+
+                currentResults.push({
+                    type: 'akta_kelahiran',
+                    id: item.id,
+                    title: item.nama_anak,
+                    subtitle: `Anak: ${item.nama_ayah} & ${item.nama_ibu} (${item.tipe_akta})`,
+                    date: item.created_at,
+                    icon: Baby,
+                    color: "text-orange-600 bg-orange-50",
+                    link: `${basePath}?search=${encodeURIComponent(item.no_akta || item.nama_anak)}`
+                })
+            })
 
             // 4. Akta Perkawinan
             const { data: d4 } = await supabase

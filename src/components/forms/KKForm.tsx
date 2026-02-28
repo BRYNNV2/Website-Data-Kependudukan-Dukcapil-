@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, AlertTriangle, ChevronLeft, ChevronRight, Printer } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { ExcelActions } from "@/components/ExcelActions"
 import { logActivity } from "@/lib/logger"
 import { compressImage } from "@/lib/imageCompression"
+import { printReceipt } from "@/lib/printReceipt"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
     Dialog,
@@ -440,6 +441,22 @@ export function KKForm() {
         }
     }
 
+    const handlePrint = (item: KKData) => {
+        printReceipt({
+            title: "TANDA TERIMA BERKAS KEARSIPAN KARTU KELUARGA",
+            documentNo: item.no_kk,
+            data: {
+                "Kepala Keluarga": item.kepala_keluarga,
+                "Nomor Kartu Keluarga": item.no_kk,
+                "Alamat Lengkap": item.alamat,
+                "RT / RW": `${item.rt} / ${item.rw}`,
+                "Tanggal Dikeluarkan": item.tanggal_dikeluarkan || "-",
+                "Keterangan": item.keterangan || "-",
+                "Deret": item.deret || "-"
+            }
+        })
+    }
+
     return (
         <div className="space-y-6">
             {/* View Detail Dialog */}
@@ -760,6 +777,15 @@ export function KKForm() {
                                                     onClick={() => handleEdit(item)}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
+                                                    onClick={() => handlePrint(item)}
+                                                    title="Cetak Tanda Terima"
+                                                >
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"

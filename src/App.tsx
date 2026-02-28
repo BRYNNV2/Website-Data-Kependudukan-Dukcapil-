@@ -44,6 +44,10 @@ function App() {
               <Route path="/input-data/akta-kelahiran" element={<InputAkta />} />
               <Route path="/input-data/akta-kelahiran-lt" element={<InputAkta />} />
               <Route path="/input-data/akta-kelahiran-lu" element={<InputAkta />} />
+              <Route path="/input-data/akta-kelahiran-clu" element={<InputAkta />} />
+              <Route path="/input-data/akta-kelahiran-clt" element={<InputAkta />} />
+              <Route path="/input-data/akta-kelahiran-lapor-lahir" element={<InputAkta />} />
+              <Route path="/input-data/akta-kelahiran-kutipan-ii" element={<InputAkta />} />
               <Route path="/input-data/akta-perkawinan" element={<InputAktaPerkawinan />} />
               <Route path="/input-data/akta-perceraian" element={<InputAktaPerceraian />} />
               <Route path="/input-data/akta-kematian" element={<InputAktaKematian />} />

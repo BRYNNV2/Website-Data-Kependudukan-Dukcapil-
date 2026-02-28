@@ -269,6 +269,30 @@ export default function Layout({ children }: LayoutProps) {
                                         )}>
                                             Akta Kelahiran LU
                                         </Link>
+                                        <Link to="/input-data/akta-kelahiran-clu" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-clu") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Akta Kelahiran CLU
+                                        </Link>
+                                        <Link to="/input-data/akta-kelahiran-clt" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-clt") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Akta Kelahiran CLT
+                                        </Link>
+                                        <Link to="/input-data/akta-kelahiran-lapor-lahir" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-lapor-lahir") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Lapor Lahir
+                                        </Link>
+                                        <Link to="/input-data/akta-kelahiran-kutipan-ii" className={cn(
+                                            "block py-1 text-xs hover:text-primary transition-colors",
+                                            isActive("/input-data/akta-kelahiran-kutipan-ii") ? "text-primary font-medium" : "text-muted-foreground"
+                                        )}>
+                                            Kutipan II Kelahiran
+                                        </Link>
                                     </div>
                                 </div>
 
@@ -380,11 +404,17 @@ export default function Layout({ children }: LayoutProps) {
                                     {location.pathname === "/input-data/kartu-keluarga" ? "Input Kartu Keluarga" :
                                         location.pathname === "/input-data/ktp" ? "Input KTP Elektronik" :
                                             location.pathname === "/input-data/akta-kelahiran" ? "Input Akta Kelahiran" :
-                                                location.pathname === "/input-data/akta-perkawinan" ? "Input Akta Perkawinan" :
-                                                    location.pathname === "/input-data/akta-perceraian" ? "Input Akta Perceraian" :
-                                                        location.pathname === "/input-data/akta-kematian" ? "Input Akta Kematian" :
-                                                            location.pathname === "/settings" ? "Pengaturan Akun" :
-                                                                "Admin Panel"}
+                                                location.pathname === "/input-data/akta-kelahiran-lt" ? "Input Akta Kelahiran LT" :
+                                                    location.pathname === "/input-data/akta-kelahiran-lu" ? "Input Akta Kelahiran LU" :
+                                                        location.pathname === "/input-data/akta-kelahiran-clu" ? "Input Akta Kelahiran CLU" :
+                                                            location.pathname === "/input-data/akta-kelahiran-clt" ? "Input Akta Kelahiran CLT" :
+                                                                location.pathname === "/input-data/akta-kelahiran-lapor-lahir" ? "Lapor Lahir" :
+                                                                    location.pathname === "/input-data/akta-kelahiran-kutipan-ii" ? "Input Kutipan II Kelahiran" :
+                                                                        location.pathname === "/input-data/akta-perkawinan" ? "Input Akta Perkawinan" :
+                                                                            location.pathname === "/input-data/akta-perceraian" ? "Input Akta Perceraian" :
+                                                                                location.pathname === "/input-data/akta-kematian" ? "Input Akta Kematian" :
+                                                                                    location.pathname === "/settings" ? "Pengaturan Akun" :
+                                                                                        "Admin Panel"}
                                 </h1>
                             </div>
                         )}

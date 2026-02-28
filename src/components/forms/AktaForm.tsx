@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient" // Corrected import path
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { Plus, Search, Trash2, Edit, FileDown, X, Eye } from "lucide-react"
+import { Plus, Search, Trash2, Edit, FileDown, X, Eye, Printer } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { ExcelActions } from "@/components/ExcelActions"
@@ -17,6 +17,7 @@ import { ThreeBodyLoader } from "@/components/ui/ThreeBodyLoader"
 import { logActivity } from "@/lib/logger"
 import { ImageUploadCapture } from "@/components/ImageUploadCapture"
 import { compressImage } from "@/lib/imageCompression"
+import { printReceipt } from "@/lib/printReceipt"
 
 // Helper function to parse Indonesian dates like "12 Juli 2002" or "DI TERBITKAN 12 JULI 2002"
 const parseIndonesianDate = (dateString: string): string | null => {
@@ -71,6 +72,7 @@ interface AktaData {
 
 export function AktaForm() {
     const location = useLocation()
+    const [searchParams] = useSearchParams()
 
     // Determine Type based on URL structure
     let tipeAkta = 'DEFAULT' // Fallback for normal /akta-kelahiran route
@@ -82,6 +84,18 @@ export function AktaForm() {
     } else if (location.pathname.endsWith('-lt')) {
         tipeAkta = 'LT'
         pageTitle = 'Data Akta Kelahiran LT'
+    } else if (location.pathname.endsWith('-clu')) {
+        tipeAkta = 'CLU'
+        pageTitle = 'Data Akta Kelahiran CLU'
+    } else if (location.pathname.endsWith('-clt')) {
+        tipeAkta = 'CLT'
+        pageTitle = 'Data Akta Kelahiran CLT'
+    } else if (location.pathname.endsWith('-lapor-lahir')) {
+        tipeAkta = 'LAPOR_LAHIR'
+        pageTitle = 'Data Lapor Lahir'
+    } else if (location.pathname.endsWith('-kutipan-ii')) {
+        tipeAkta = 'KUTIPAN_II'
+        pageTitle = 'Data Kutipan II Kelahiran'
     }
 
     const [loading, setLoading] = useState(false)
@@ -125,14 +139,25 @@ export function AktaForm() {
         setFormData(prev => ({ ...prev, tipe_akta: tipeAkta }))
         setCurrentPage(0) // Reset pagination
         setShowForm(false)
-        setSearchTerm("")
-    }, [tipeAkta])
+        if (!searchParams.get("search")) {
+            setSearchTerm("")
+        }
+    }, [tipeAkta, searchParams])
 
     useEffect(() => {
         if (location.state?.refresh) {
             fetchData()
         }
     }, [location.state])
+
+    // Auto-search from URL param (from Global Search)
+    useEffect(() => {
+        const query = searchParams.get("search")
+        if (query) {
+            setSearchTerm(query)
+            setCurrentPage(0)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         fetchDeretOptions()
@@ -524,24 +549,84 @@ export function AktaForm() {
         }
     }
 
-    const handleDownloadPDF = () => {
-        const doc = new jsPDF()
-        doc.text(`Laporan ${pageTitle}`, 14, 10)
+    const fetchAllDataForExport = async (): Promise<AktaData[]> => {
+        let allData: AktaData[] = []
+        let from = 0
+        const batchSize = 1000
 
-        autoTable(doc, {
-            head: [['No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Terbit', 'Agama', 'Deret']],
-            body: dataList.map(item => [
-                item.no_akta,
-                item.nama_anak,
-                item.nama_ayah,
-                item.nama_ibu,
-                item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID") : "-",
-                (item.agama && item.agama !== "LAINNYA") ? item.agama : "-",
-                item.deret || "-"
-            ]),
+        while (true) {
+            let query = supabase
+                .from("akta_kelahiran")
+                .select("*")
+                .eq("tipe_akta", tipeAkta)
+                .eq("is_deleted", false)
+                .order("no_akta", { ascending: true })
+                .range(from, from + batchSize - 1)
+
+            if (searchTerm) {
+                query = query.or(`no_akta.ilike.%${searchTerm}%,nama_anak.ilike.%${searchTerm}%,nama_ayah.ilike.%${searchTerm}%,nama_ibu.ilike.%${searchTerm}%,agama.ilike.%${searchTerm}%`)
+            }
+
+            if (searchDeret) {
+                query = query.eq("deret", searchDeret)
+            }
+
+            const { data, error } = await query
+            if (error) throw error
+            if (!data || data.length === 0) break
+
+            allData = [...allData, ...data]
+            if (data.length < batchSize) break
+            from += batchSize
+        }
+
+        return allData
+    }
+
+    const handleDownloadPDF = async () => {
+        toast.info("Menyiapkan data untuk export PDF...")
+        try {
+            const allData = await fetchAllDataForExport()
+
+            const doc = new jsPDF()
+            doc.text(`Laporan ${pageTitle}`, 14, 10)
+
+            autoTable(doc, {
+                head: [['No. Akta', 'Nama Anak', 'Nama Ayah', 'Nama Ibu', 'Tgl Terbit', 'Agama', 'Deret']],
+                body: allData.map(item => [
+                    item.no_akta,
+                    item.nama_anak,
+                    item.nama_ayah,
+                    item.nama_ibu,
+                    item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID") : "-",
+                    (item.agama && item.agama !== "LAINNYA") ? item.agama : "-",
+                    item.deret || "-"
+                ]),
+            })
+
+            doc.save(`${pageTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`)
+            toast.success(`Export PDF berhasil! Total ${allData.length} data.`)
+        } catch (error: any) {
+            console.error("Export PDF Error:", error)
+            toast.error("Gagal export PDF: " + error.message)
+        }
+    }
+
+    const handlePrint = (item: AktaData) => {
+        printReceipt({
+            title: `TANDA TERIMA BERKAS ${pageTitle.toUpperCase()}`,
+            documentNo: item.no_akta,
+            data: {
+                "Nama Anak": item.nama_anak,
+                "Nomor Akta": item.no_akta,
+                "Nama Ayah": item.nama_ayah,
+                "Nama Ibu": item.nama_ibu,
+                "Tanggal Terbit": item.tanggal_terbit ? new Date(item.tanggal_terbit).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-",
+                "Agama": (item.agama && item.agama !== "LAINNYA") ? item.agama : "-",
+                "Keterangan": item.keterangan || "-",
+                "Deret": item.deret || "-"
+            }
         })
-
-        doc.save(`${pageTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`)
     }
 
     return (
@@ -655,7 +740,23 @@ export function AktaForm() {
                         />
                     </div>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                        <ExcelActions data={dataList} fileName="Data_Akta_Kelahiran" onImport={handleImport} isLoading={loading} />
+                        <ExcelActions
+                            data={dataList}
+                            fileName={`Data_Akta_Kelahiran_${tipeAkta}`}
+                            onImport={handleImport}
+                            isLoading={loading}
+                            onFetchAllForExport={fetchAllDataForExport}
+                            columnMap={[
+                                { key: "no_akta", label: "No. Akta" },
+                                { key: "nama_anak", label: "Nama Anak" },
+                                { key: "nama_ayah", label: "Nama Ayah" },
+                                { key: "nama_ibu", label: "Nama Ibu" },
+                                { key: "tanggal_terbit", label: "Tanggal Terbit", format: (v) => v ? new Date(v).toLocaleDateString("id-ID") : "-" },
+                                ...(tipeAkta === "DEFAULT" ? [{ key: "agama", label: "Agama", format: (v: any) => (v && v !== "LAINNYA") ? v : "-" }] : []),
+                                { key: "deret", label: "Deret", format: (v) => v || "-" },
+                                { key: "keterangan", label: "Keterangan", format: (v) => v || "-" },
+                            ]}
+                        />
                         <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 hover:border-red-300" title="Export Laporan PDF">
                             <FileDown className="h-4 w-4 mr-2" />
                             Export PDF
@@ -869,6 +970,15 @@ export function AktaForm() {
                                                     title="Edit Data"
                                                 >
                                                     <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                                    onClick={() => handlePrint(item)}
+                                                    title="Cetak Tanda Terima"
+                                                >
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"

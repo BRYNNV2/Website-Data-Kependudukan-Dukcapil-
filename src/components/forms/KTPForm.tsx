@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
-import { Plus, Trash2, X, FileDown, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Trash2, X, FileDown, Search, Eye, ChevronLeft, ChevronRight, Printer } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { logActivity } from "@/lib/logger"
 import { compressImage } from "@/lib/imageCompression"
+import { printReceipt } from "@/lib/printReceipt"
 import {
     Dialog,
     DialogContent,
@@ -409,6 +410,21 @@ export function KTPForm() {
         doc.save(`Laporan_KTP_${new Date().getTime()}.pdf`)
     }
 
+    const handlePrint = (item: KTPData) => {
+        printReceipt({
+            title: "TANDA TERIMA BERKAS KEARSIPAN KTP ELEKTRONIK",
+            documentNo: item.nik,
+            data: {
+                "Nama Lengkap": item.nama_lengkap,
+                "Nomor Induk Kependudukan (NIK)": item.nik,
+                "Tempat / Tanggal Lahir": `${item.tempat_lahir}, ${formatDate(item.tgl_lahir)}`,
+                "Pekerjaan": item.pekerjaan,
+                "Keterangan": item.keterangan || "-",
+                "Deret": item.deret || "-"
+            }
+        })
+    }
+
     return (
         <div className="space-y-6">
             {/* View Detail Dialog */}
@@ -686,6 +702,15 @@ export function KTPForm() {
                                                     onClick={() => handleEdit(item)}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
+                                                    onClick={() => handlePrint(item)}
+                                                    title="Cetak Tanda Terima"
+                                                >
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
