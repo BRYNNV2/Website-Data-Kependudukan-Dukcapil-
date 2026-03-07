@@ -225,8 +225,8 @@ export default function Layout({ children }: LayoutProps) {
 
                         {/* Sub-menu */}
                         <div className={cn(
-                            "overflow-hidden transition-all duration-200",
-                            inputDataOpen && !isCollapsed ? "max-h-[300px] mt-1" : "max-h-0"
+                            "overflow-hidden transition-all duration-300",
+                            inputDataOpen && !isCollapsed ? "max-h-[600px] mt-1" : "max-h-0"
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/input-data/kartu-keluarga" icon={Users} label="Kartu Keluarga" />
@@ -248,8 +248,8 @@ export default function Layout({ children }: LayoutProps) {
                                         )} />
                                     </button>
                                     <div className={cn(
-                                        "overflow-hidden transition-all duration-200 pl-4 border-l ml-2 mt-1 space-y-1",
-                                        aktaKelahiranOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0"
+                                        "overflow-hidden transition-all duration-300 pl-4 border-l ml-2 mt-1 space-y-1",
+                                        aktaKelahiranOpen ? "max-h-[350px] opacity-100" : "max-h-0 opacity-0"
                                     )}>
                                         <Link to="/input-data/akta-kelahiran" className={cn(
                                             "block py-1 text-xs hover:text-primary transition-colors",
@@ -332,8 +332,8 @@ export default function Layout({ children }: LayoutProps) {
 
                         {/* Sub-menu */}
                         <div className={cn(
-                            "overflow-hidden transition-all duration-200",
-                            rekapArsipOpen && !isCollapsed ? "max-h-[300px] mt-1" : "max-h-0"
+                            "overflow-hidden transition-all duration-300",
+                            rekapArsipOpen && !isCollapsed ? "max-h-[600px] mt-1" : "max-h-0"
                         )}>
                             <div className="space-y-1">
                                 <SubNavItem to="/rekap-arsip/kk" icon={Users} label="Arsip KK" />
