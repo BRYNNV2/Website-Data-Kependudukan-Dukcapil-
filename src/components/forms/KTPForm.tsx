@@ -638,6 +638,10 @@ export function KTPForm() {
                                 label="Foto KTP / Bukti Pendukung"
                                 currentImage={currentImage}
                                 onImageCaptured={(file) => setSelectedFile(file)}
+                                onImageCleared={() => {
+                                    setSelectedFile(null)
+                                    setCurrentImage(null)
+                                }}
                             />
                         </div>
                     </CardContent>

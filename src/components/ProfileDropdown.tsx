@@ -148,10 +148,8 @@ export const ProfileDropdown = () => {
             setShowEditModal(false);
             setImage(null);
 
-            // Force reload to update Layout or use Context (better)
-            // For now, we update local state which is fine for this component but Layout header won't update unless we share state.
-            // A simple hack: reload page or communicate via event.
-            window.location.reload();
+            // Trigger custom event so other components (like Layout) can catch the update independently
+            window.dispatchEvent(new Event('profile-updated'));
 
         } catch (error: any) {
             toast.error("Gagal memperbarui profil: " + error.message);

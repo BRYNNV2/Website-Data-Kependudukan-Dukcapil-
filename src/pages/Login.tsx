@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { supabase } from "@/lib/supabaseClient"
 import { User, Lock, Mail } from "lucide-react"
 import logoTanjungpinang from "@/assets/logo_tanjungpinang.png"
@@ -36,6 +36,15 @@ export default function Login() {
     const [resetLoading, setResetLoading] = useState(false)
 
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+
+    useEffect(() => {
+        if (searchParams.get("message") === "session_expired") {
+            toast.warning("Sesi Anda telah berakhir secara otomatis karena tidak ada aktivitas demi keamanan data.", { duration: 5000 })
+            // Clean up the URL to prevent the message from showing again on refresh
+            setSearchParams({})
+        }
+    }, [searchParams, setSearchParams])
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault()

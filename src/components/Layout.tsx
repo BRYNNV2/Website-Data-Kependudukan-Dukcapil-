@@ -56,6 +56,12 @@ export default function Layout({ children }: LayoutProps) {
         }
         getName()
 
+        const handleProfileUpdate = () => {
+            getName()
+        }
+
+        window.addEventListener('profile-updated', handleProfileUpdate)
+
         // Sidebar control for tour
         const handleOpenSidebar = () => setSidebarOpen(true);
         const handleCloseSidebar = () => setSidebarOpen(false); // Optional, if needed
@@ -64,6 +70,7 @@ export default function Layout({ children }: LayoutProps) {
         window.addEventListener('close-sidebar', handleCloseSidebar);
 
         return () => {
+            window.removeEventListener('profile-updated', handleProfileUpdate);
             window.removeEventListener('open-sidebar', handleOpenSidebar);
             window.removeEventListener('close-sidebar', handleCloseSidebar);
         }

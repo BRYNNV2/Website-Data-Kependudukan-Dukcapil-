@@ -579,6 +579,10 @@ export function AktaKematianForm() {
                             label="Foto Dokumen Akta (Opsional)"
                             currentImage={currentImage}
                             onImageCaptured={(file) => setSelectedFile(file)}
+                            onImageCleared={() => {
+                                setSelectedFile(null)
+                                setCurrentImage(null)
+                            }}
                         />
 
                         <div className="flex justify-end gap-2 pt-4">

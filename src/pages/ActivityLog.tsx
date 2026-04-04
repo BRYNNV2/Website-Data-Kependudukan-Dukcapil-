@@ -21,8 +21,7 @@ export default function ActivityLog() {
     const [page, setPage] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
     const pageSize = 10
-
-    // Auto-pruning logs older than 7 days on mount
+    
     // Auto-pruning logs older than 7 days on mount
     useEffect(() => {
         const pruneLogs = async () => {

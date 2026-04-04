@@ -898,6 +898,10 @@ export function AktaForm() {
                                 label="Foto Dokumen Akta (Fisik)"
                                 currentImage={currentImage}
                                 onImageCaptured={(file) => setSelectedFile(file)}
+                                onImageCleared={() => {
+                                    setSelectedFile(null)
+                                    setCurrentImage(null)
+                                }}
                             />
                         </div>
                     </CardContent>

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import Webcam from "react-webcam"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -7,15 +7,21 @@ import { Camera, Upload, X, RefreshCw } from "lucide-react"
 
 interface ImageUploadCaptureProps {
     onImageCaptured: (file: File) => void
+    onImageCleared?: () => void
     label?: string
     currentImage?: string | null
 }
 
-export function ImageUploadCapture({ onImageCaptured, label = "Bukti Foto", currentImage }: ImageUploadCaptureProps) {
+export function ImageUploadCapture({ onImageCaptured, onImageCleared, label = "Bukti Foto", currentImage }: ImageUploadCaptureProps) {
     const [preview, setPreview] = useState<string | null>(currentImage || null)
     const [isOpen, setIsOpen] = useState(false)
     const webcamRef = useRef<Webcam>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // Sync preview with incoming prop
+    useEffect(() => {
+        setPreview(currentImage || null)
+    }, [currentImage])
 
     // Handle file upload
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +58,7 @@ export function ImageUploadCapture({ onImageCaptured, label = "Bukti Foto", curr
         e.stopPropagation()
         setPreview(null)
         if (fileInputRef.current) fileInputRef.current.value = ""
+        if (onImageCleared) onImageCleared()
     }
 
     return (

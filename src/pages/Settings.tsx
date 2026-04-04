@@ -46,10 +46,8 @@ export default function Settings() {
             // Force refresh session to propagate changes to Layout
             await supabase.auth.refreshSession()
 
-            // Reload to ensure header updates
-            setTimeout(() => {
-                window.location.reload()
-            }, 1000)
+            // Trigger custom event so other components (like Layout) can catch the update independently
+            window.dispatchEvent(new Event('profile-updated'));
         } catch (error: any) {
             toast.error(error.message)
         } finally {

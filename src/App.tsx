@@ -21,11 +21,15 @@ import { NetworkStatus } from "@/components/NetworkStatus"
 
 import ResetPassword from "@/pages/ResetPassword"
 import { IpGuard } from "@/components/auth/IpGuard"
+import { AutoLogout } from "@/components/auth/AutoLogout"
 
 const LayoutWrapper = () => (
-  <Layout>
-    <Outlet />
-  </Layout>
+  <>
+    <AutoLogout />
+    <Layout>
+      <Outlet />
+    </Layout>
+  </>
 )
 
 

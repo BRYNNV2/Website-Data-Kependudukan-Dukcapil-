@@ -712,6 +712,10 @@ export function KKForm() {
                                 label="Foto Kartu Keluarga (Fisik)"
                                 currentImage={currentImage}
                                 onImageCaptured={(file) => setSelectedFile(file)}
+                                onImageCleared={() => {
+                                    setSelectedFile(null)
+                                    setCurrentImage(null)
+                                }}
                             />
                         </div>
                     </CardContent>
