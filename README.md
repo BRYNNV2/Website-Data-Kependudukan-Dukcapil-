@@ -45,6 +45,25 @@ Fitur penyelamatan data (Disaster Recovery) yang memungkinkan administrator meng
 *   **Backup Full System**: Satu klik untuk mengamankan semua tabel.
 *   **Backup Parsial**: Download per kategori data (misal: hanya Akta Kelahiran).
 
+### 9. 🔒 Enhanced Security & Session Management
+Keamanan level instansi untuk menjaga privasi data kependudukan:
+*   **Auto Logout (Idle Timeout)**: Sistem mendeteksi otomatis jika komputer ditinggal petugas dan memutus sesi keamanan (logout) dalam rentang waktu yang disesuaikan.
+*   **IP Restriction (Geo-Fencing)**: Fitur pelindung di *Middleware* (Vercel/Hosting) untuk memastikan aplikasi hanya bisa diakses via Wi-Fi/Jaringan internal kantor Dukcapil.
+
+### 10. 📸 Fitur Upload Dokumen Fisik & Webcam
+Digitalisasi penuh dengan bukti asli:
+*   **Ambil Foto Terintegrasi**: Mengambil gambar bukti dokumen asli menggunakan Web Camera / Desktop Camera langsung dari browser.
+*   **Seamless Update & Delete**: Penanganan cache gambar presisi saat unggah, perbarui, maupun hapus foto lampiran tanpa refresh memori.
+
+### 11. 🧾 Cetak Tanda Terima (Receipt Printing)
+Selain laporan panjang, sediakan bukti administratif singkat:
+*   **Print Tanda Terima Berkas**: Secara instan membuat format "Struk/Resi" tanda terima pendaftaran dokumen resmi dengan tata letak minimalis dan rapi.
+
+### 12. ⚡ Seamless React State & PWA
+Arsitektur modern untuk *user experience* terbaik:
+*   **Profil Dinamis**: Pembaruan foto profil atau nama pengguna merambat instan (*event listener cross-component*) tanpa halaman *reload/berkedip*.
+*   **PWA Ready**: Telah dikonfigurasikan dengan `vite-plugin-pwa` untuk *caching* dan performa stabil seperti aplikasi *desktop*.
+
 ---
 
 ## 🛠️ Teknologi yang Digunakan
