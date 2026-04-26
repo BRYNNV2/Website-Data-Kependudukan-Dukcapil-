@@ -15,6 +15,7 @@ import { logActivity } from "@/lib/logger"
 import { compressImage } from "@/lib/imageCompression"
 import { printReceipt } from "@/lib/printReceipt"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { parseExcelDate } from "@/lib/utils"
 import {
     Dialog,
     DialogContent,
@@ -313,7 +314,7 @@ export function AktaPerceraianForm() {
                 no_akta: String(item['No. Akta'] || item['no_akta'] || item['No Akta'] || ''),
                 nama_suami: item['Nama Suami'] || item['nama_suami'] || '',
                 nama_istri: item['Nama Istri'] || item['nama_istri'] || '',
-                tanggal_terbit: item['Tanggal Terbit'] || item['tanggal_terbit'] || null,
+                tanggal_terbit: parseExcelDate(item['Tanggal Terbit'] || item['tanggal_terbit']),
                 keterangan: item['Keterangan'] || item['keterangan'] || '',
                 deret: item['Deret'] || item['deret'] || ''
             })).filter(item => item.nama_suami && item.nama_istri)
@@ -324,9 +325,38 @@ export function AktaPerceraianForm() {
                 return
             }
 
-            const { error } = await supabase.from('akta_perceraian').upsert(validData, { onConflict: 'no_akta' })
-            if (error) throw error
+            // Cari data yang sudah ada berdasarkan no_akta untuk menghindari duplikat
+            const importedNos = validData.map(item => item.no_akta).filter(Boolean)
+            
+            const { data: existingData, error: checkError } = await supabase
+                .from('akta_perceraian')
+                .select('id, no_akta')
+                .in('no_akta', importedNos)
 
+            if (checkError) throw checkError
+
+            const existingMap = new Map(existingData?.map(item => [item.no_akta, item.id]))
+            
+            const toInsert = []
+            const toUpdate = []
+
+            for (const item of validData) {
+                if (existingMap.has(item.no_akta)) {
+                    toUpdate.push({ ...item, id: existingMap.get(item.no_akta) })
+                } else {
+                    toInsert.push(item)
+                }
+            }
+
+            if (toUpdate.length > 0) {
+                const { error } = await supabase.from('akta_perceraian').upsert(toUpdate)
+                if (error) throw error
+            }
+
+            if (toInsert.length > 0) {
+                const { error } = await supabase.from('akta_perceraian').insert(toInsert)
+                if (error) throw error
+            }
             await logActivity("IMPORT DATA PERCERAIAN", `Import ${validData.length} data`)
             toast.success(`Import berhasil: ${validData.length} data`)
             fetchData()

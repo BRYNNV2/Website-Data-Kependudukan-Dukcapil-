@@ -15,6 +15,7 @@ import { logActivity } from "@/lib/logger"
 import { compressImage } from "@/lib/imageCompression"
 import { printReceipt } from "@/lib/printReceipt"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { parseExcelDate } from "@/lib/utils"
 import {
     Dialog,
     DialogContent,
@@ -310,9 +311,9 @@ export function AktaKematianForm() {
             const validData = importedData.map(item => ({
                 no_surat: String(item['No. Surat'] || item['no_surat'] || item['No Surat'] || ''),
                 nama: item['Nama'] || item['nama'] || item['Nama Lengkap'] || '',
-                tanggal_meninggal: item['Tanggal Meninggal'] || item['tanggal_meninggal'] || null,
+                tanggal_meninggal: parseExcelDate(item['Tanggal Meninggal'] || item['tanggal_meninggal']),
                 tempat_lahir: item['Tempat Lahir'] || item['tempat_lahir'] || '',
-                tanggal_lahir: item['Tanggal Lahir'] || item['tanggal_lahir'] || null,
+                tanggal_lahir: parseExcelDate(item['Tanggal Lahir'] || item['tanggal_lahir']),
                 keterangan: item['Keterangan'] || item['keterangan'] || '',
                 deret: item['Deret'] || item['deret'] || ''
             })).filter(item => item.nama && item.tanggal_meninggal)
@@ -323,8 +324,38 @@ export function AktaKematianForm() {
                 return
             }
 
-            const { error } = await supabase.from('akta_kematian').upsert(validData, { onConflict: 'no_surat' })
-            if (error) throw error
+            // Cari data yang sudah ada berdasarkan no_surat untuk menghindari duplikat
+            const importedNos = validData.map(item => item.no_surat).filter(Boolean)
+            
+            const { data: existingData, error: checkError } = await supabase
+                .from('akta_kematian')
+                .select('id, no_surat')
+                .in('no_surat', importedNos)
+
+            if (checkError) throw checkError
+
+            const existingMap = new Map(existingData?.map(item => [item.no_surat, item.id]))
+            
+            const toInsert = []
+            const toUpdate = []
+
+            for (const item of validData) {
+                if (existingMap.has(item.no_surat)) {
+                    toUpdate.push({ ...item, id: existingMap.get(item.no_surat) })
+                } else {
+                    toInsert.push(item)
+                }
+            }
+
+            if (toUpdate.length > 0) {
+                const { error } = await supabase.from('akta_kematian').upsert(toUpdate)
+                if (error) throw error
+            }
+
+            if (toInsert.length > 0) {
+                const { error } = await supabase.from('akta_kematian').insert(toInsert)
+                if (error) throw error
+            }
 
             await logActivity("IMPORT DATA KEMATIAN", `Import ${validData.length} data`)
             toast.success(`Import berhasil: ${validData.length} data`)
