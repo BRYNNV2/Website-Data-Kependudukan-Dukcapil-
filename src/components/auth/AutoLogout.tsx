@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 // Configurations
-const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 Detik untuk testing
+const IDLE_TIMEOUT =  30 * 60 * 1000 // 30 Detik untuk testing
 const WARNING_TIMEOUT = 10 * 1000; // Warning muncul 10 detik sebelum sesi berakhir
 
 export function AutoLogout() {

@@ -91,7 +91,7 @@ export function AktaForm() {
         tipeAkta = 'CLT'
         pageTitle = 'Data Akta Kelahiran CLT'
     } else if (location.pathname.endsWith('-lapor-lahir')) {
-        tipeAkta = 'LAPOR_LAHIR'
+        tipeAkta = 'LAPOR'
         pageTitle = 'Data Lapor Lahir'
     } else if (location.pathname.endsWith('-kutipan-ii')) {
         tipeAkta = 'KUTIPAN_II'

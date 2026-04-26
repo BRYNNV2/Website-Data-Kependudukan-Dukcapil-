@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabaseClient"
-import { User, Lock, Mail, Loader2, HelpCircle, PlayCircle } from "lucide-react"
+import { User, Lock, Mail, Loader2, PlayCircle, HelpCircle } from "lucide-react"
 
 export default function Settings() {
     const [loading, setLoading] = useState(false)
@@ -83,57 +83,57 @@ export default function Settings() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-10 w-full">
             <div>
-                <h3 className="text-2xl font-bold tracking-tight text-gray-800">Pengaturan Akun</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-2xl font-bold tracking-tight text-slate-800">Pengaturan Akun</h3>
+                <p className="text-sm text-slate-500 mt-1">
                     Kelola informasi profil dan keamanan akun Anda.
                 </p>
             </div>
 
-            <div className="grid gap-6">
-                {/* Profile Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+            <div className="space-y-6">
+                {/* Profile Form Card */}
+                <Card className="border-slate-200 shadow-sm">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                             <User className="h-5 w-5 text-blue-600" />
                             Informasi Profil
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-sm">
                             Perbarui informasi identitas Anda di sini.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-5">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email" className="font-semibold text-slate-700 text-sm">Email</Label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
                                     id="email"
                                     value={user?.email || ""}
                                     disabled
-                                    className="pl-9 bg-muted"
+                                    className="pl-9 bg-slate-50/50 text-slate-500 border-slate-200"
                                 />
                             </div>
-                            <p className="text-xs text-muted-foreground">Email tidak dapat diubah.</p>
+                            <p className="text-[11px] text-slate-400">Email tidak dapat diubah.</p>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="fullName">Nama Lengkap</Label>
+                            <Label htmlFor="fullName" className="font-semibold text-slate-700 text-sm">Nama Lengkap</Label>
                             <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
                                     id="fullName"
-                                    placeholder="Nama Lengkap Anda"
+                                    placeholder="Masukkan Nama Lengkap"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
-                                    className="pl-9"
+                                    className="pl-9 border-slate-200 focus-visible:ring-blue-500"
                                 />
                             </div>
                         </div>
 
                         <div className="pt-2">
-                            <Button onClick={updateProfile} disabled={loading}>
+                            <Button onClick={updateProfile} disabled={loading} className="bg-[#1e293b] hover:bg-slate-800 text-white min-w-[150px]">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {loading ? "Menyimpan..." : "Simpan Perubahan"}
                             </Button>
@@ -142,36 +142,38 @@ export default function Settings() {
                 </Card>
 
                 {/* Password Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Lock className="h-5 w-5 text-orange-600" />
+                <Card className="border-slate-200 shadow-sm">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                            <Lock className="h-5 w-5 text-orange-500" />
                             Ganti Password
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-sm">
                             Pastikan password Anda aman dan tidak mudah ditebak.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-2">
+                    <CardContent className="space-y-5">
+                        <div className="grid md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="newPassword">Password Baru</Label>
+                                <Label htmlFor="newPassword" className="font-semibold text-slate-700 text-sm">Password Baru</Label>
                                 <Input
                                     id="newPassword"
                                     type="password"
-                                    placeholder="••••••"
+                                    placeholder="******"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
+                                    className="border-slate-200 focus-visible:ring-orange-500"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+                                <Label htmlFor="confirmPassword" className="font-semibold text-slate-700 text-sm">Konfirmasi Password</Label>
                                 <Input
                                     id="confirmPassword"
                                     type="password"
-                                    placeholder="••••••"
+                                    placeholder="******"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="border-slate-200 focus-visible:ring-orange-500"
                                 />
                             </div>
                         </div>
@@ -181,7 +183,7 @@ export default function Settings() {
                                 variant="outline"
                                 onClick={updatePassword}
                                 disabled={passwordLoading || !newPassword}
-                                className="border-orange-200 hover:bg-orange-50 text-orange-700"
+                                className="border-orange-200 text-orange-500 hover:bg-orange-50 hover:text-orange-600 min-w-[150px]"
                             >
                                 {passwordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Update Password
@@ -190,15 +192,14 @@ export default function Settings() {
                     </CardContent>
                 </Card>
 
-
-                {/* Help User Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                {/* Help Center Card */}
+                <Card className="border-slate-200 shadow-sm">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                             <HelpCircle className="h-5 w-5 text-green-600" />
                             Pusat Bantuan
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-sm">
                             Bingung cara menggunakan aplikasi? Mulai tur interaktif kembali.
                         </CardDescription>
                     </CardHeader>
@@ -206,14 +207,9 @@ export default function Settings() {
                         <Button
                             onClick={() => {
                                 window.location.href = '/dashboard';
-                                // Use setTimeout to allow navigation to engage first, then trigger tour
-                                // We will handle the auto-start logic in OnboardingTour's useEffect based on a URL param or local storage flag if needed, 
-                                // BUT simpler: Dispatch event after small delay if on same page logic, or better:
-                                // Let's use a localStorage flag that OnboardingTour checks on mount "force_tour_start"
                                 localStorage.setItem('force_tour_restart', 'true');
                             }}
-                            variant="secondary"
-                            className="bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                            className="bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 min-w-[150px]"
                         >
                             <PlayCircle className="mr-2 h-4 w-4" />
                             Mulai Panduan Aplikasi
@@ -221,6 +217,6 @@ export default function Settings() {
                     </CardContent>
                 </Card>
             </div>
-        </div >
+        </div>
     )
 }
